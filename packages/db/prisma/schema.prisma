@@ -1,0 +1,316 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── User ────────────────────────────────────────────────────
+model User {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  firebaseUid         String    @unique
+  email               String    @unique
+  role                String    @default("candidate") // admin | company | candidate | recruiter
+  displayName         String?
+  avatarUrl           String?
+  isActive            Boolean   @default(true)
+  onboardingCompleted Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  candidateProfile CandidateProfile?
+  company          Company?
+  reviews          CompanyReview[]
+  notifications    Notification[]
+  savedJobs        SavedJob[]
+  auditLogs        AuditLog[]
+  analyticsEvents  AnalyticsEvent[]
+}
+
+// ─── Candidate Profile ──────────────────────────────────────
+model CandidateProfile {
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String    @unique @db.ObjectId
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName             String
+  lastName              String
+  email                 String
+  phone                 String?
+  linkedinUrl           String?
+  location              String?
+  country               String?
+  remotePreference      String?
+  yearsOfExperience     Int?
+  currentRole           String?
+  targetRole            String?
+  seniority             String?
+  languages             String[]
+  salaryExpectationBase Int?
+  salaryExpectationOte  Int?
+  noticePeriod          String?
+  cvUrl                 String?
+  shortBio              String?
+  skills                String[]
+  visibleToRecruiters   Boolean   @default(false)
+  openToWork            Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  applications Application[]
+  documents    Document[]
+}
+
+// ─── Company ─────────────────────────────────────────────────
+model Company {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String    @unique @db.ObjectId
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String    @unique
+  logoUrl        String?
+  website        String?
+  linkedinUrl    String?
+  country        String?
+  city           String?
+  employeeCount  String?
+  fundingStage   String?
+  industry       String?
+  description    String?
+  benefits       String[]
+  remotePolicy   String?
+  salesTeamSize  String?
+  atsLink        String?
+  isVerified     Boolean   @default(false)
+  isFeatured     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  jobs             Job[]
+  reviews          CompanyReview[]
+  rankingSnapshots RankingSnapshot[]
+  tags             String[]
+}
+
+// ─── Job ─────────────────────────────────────────────────────
+model Job {
+  id                      String    @id @default(auto()) @map("_id") @db.ObjectId
+  companyId               String    @db.ObjectId
+  company                 Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  title                   String
+  slug                    String    @unique
+  roleCategory            String
+  seniority               String
+  employmentType          String    @default("fulltime")
+  location                String?
+  country                 String?
+  remoteType              String    @default("hybrid")
+  salaryMin               Int?
+  salaryMax               Int?
+  oteMin                  Int?
+  oteMax                  Int?
+  currency                String    @default("EUR")
+  description             String
+  requirements            String?
+  benefits                String?
+  sourceType              String    @default("direct_company_posting")
+  sourceUrl               String?
+  applyViaPlattform       Boolean   @default(true)
+  status                  String    @default("pending_review")
+  approvalStatus          String    @default("pending")
+  companyPermissionStatus String?
+  legalNotes              String?
+  verificationStatus      String?
+  isFeatured              Boolean   @default(false)
+  isAgencyManaged         Boolean   @default(false)
+  tags                    String[]
+  viewCount               Int       @default(0)
+  interestCount           Int       @default(0)
+  publishedAt             DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  applications Application[]
+  savedBy      SavedJob[]
+}
+
+// ─── Application (Agency-Managed) ───────────────────────────
+model Application {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  jobId              String    @db.ObjectId
+  job                Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId        String    @db.ObjectId
+  candidate          CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  status             String    @default("interest_expressed")
+  recommendedByAdmin Boolean   @default(false)
+  internalNotes      String?
+  fitScore           Int?
+  adminNotes         String?
+  candidateMessage   String?
+  forwardedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+// ─── Saved Job ───────────────────────────────────────────────
+model SavedJob {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String   @db.ObjectId
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+}
+
+// ─── Company Review ──────────────────────────────────────────
+model CompanyReview {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyId           String   @db.ObjectId
+  company             Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId              String   @db.ObjectId
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  compensation        Float
+  quotaRealism        Float
+  leadQuality         Float
+  careerOpportunities Float
+  productMarketFit    Float
+  management          Float
+  culture             Float
+  workLifeBalance     Float
+  overallRating       Float
+  reviewText          String?
+  pros                String?
+  cons                String?
+  roleAtCompany       String?
+  status              String   @default("pending")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ─── Salary Insight ──────────────────────────────────────────
+model SalaryInsight {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  role             String
+  country          String
+  region           String?
+  seniority        String
+  baseSalaryMin    Int
+  baseSalaryMedian Int
+  baseSalaryMax    Int
+  oteMin           Int
+  oteMedian        Int
+  oteMax           Int
+  currency         String   @default("EUR")
+  source           String?
+  confidenceScore  Float    @default(0.5)
+  year             Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ─── Ranking Snapshot ────────────────────────────────────────
+model RankingSnapshot {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyId       String   @db.ObjectId
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  overallScore    Float
+  avgRating       Float
+  reviewCount     Int
+  isVerified      Boolean  @default(false)
+  hiringActivity  Int      @default(0)
+  rank            Int
+  country         String?
+  category        String?
+  period          String
+  createdAt       DateTime @default(now())
+}
+
+// ─── Content Post ────────────────────────────────────────────
+model ContentPost {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  slug          String    @unique
+  contentType   String
+  excerpt       String?
+  body          String
+  coverImageUrl String?
+  authorName    String?
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime?
+  tags          String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ─── Notification ────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// ─── Lead ────────────────────────────────────────────────────
+model Lead {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String   // company_listing | talent_network | contact
+  name      String
+  email     String
+  company   String?
+  phone     String?
+  message   String?
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
+// ─── Audit Log ───────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+// ─── Document ────────────────────────────────────────────────
+model Document {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  candidateId String   @db.ObjectId
+  candidate   CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  fileName    String
+  fileUrl     String
+  fileType    String
+  fileSizeKb  Int
+  category    String   @default("cv") // cv | cover_letter | other
+  createdAt   DateTime @default(now())
+}
+
+// ─── Analytics Event ─────────────────────────────────────────
+model AnalyticsEvent {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventType String
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id])
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+// ─── Admin Setting ───────────────────────────────────────────
+model AdminSetting {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  key   String @unique
+  value String
+  updatedAt DateTime @updatedAt
+}
