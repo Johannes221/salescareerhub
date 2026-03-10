@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { resetPassword } from '@salescareerhub/auth/client';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { resetPassword } from '@/lib/auth/client';
+import { APP_CONFIG } from '@/lib/config';
 import { Mail, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function PasswordResetPage() {

@@ -5,8 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CONTENT_TYPE_LABELS } from '@salescareerhub/config';
-import { formatDate } from '@salescareerhub/utils';
+import { CONTENT_TYPE_LABELS } from '@/lib/config';
+import { formatDate } from '@/lib/utils';
 import { ArrowLeft, BookOpen, User, Calendar } from 'lucide-react';
 
 export default function GuideDetailPage() {

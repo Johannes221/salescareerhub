@@ -7,8 +7,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getIdToken, loginWithApple, loginWithGoogle, registerWithEmail } from '@salescareerhub/auth/client';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { getIdToken, loginWithApple, loginWithGoogle, registerWithEmail } from '@/lib/auth/client';
+import { APP_CONFIG } from '@/lib/config';
 import { Apple, Building2, Chrome, UserPlus, AlertCircle, Users } from 'lucide-react';
 
 export default function RegisterPage() {

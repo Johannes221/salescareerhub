@@ -4,13 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { candidateProfileSchema } from '@salescareerhub/utils';
+import { candidateProfileSchema } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { JOB_ROLES, SENIORITY_LEVELS, SENIORITY_LABELS, REMOTE_TYPES, REMOTE_TYPE_LABELS, COUNTRIES } from '@salescareerhub/config';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { JOB_ROLES, SENIORITY_LEVELS, SENIORITY_LABELS, REMOTE_TYPES, REMOTE_TYPE_LABELS, COUNTRIES } from '@/lib/config';
+import { getIdToken } from '@/lib/auth/client';
 import { Save, CheckCircle, AlertCircle, User, Briefcase, MapPin, Euro, FileText } from 'lucide-react';
 import type { z } from 'zod';
 

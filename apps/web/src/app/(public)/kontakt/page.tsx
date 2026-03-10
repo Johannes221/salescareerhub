@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { APP_CONFIG } from '@/lib/config';
 import { Send, CheckCircle } from 'lucide-react';
 
 export default function KontaktPage() {

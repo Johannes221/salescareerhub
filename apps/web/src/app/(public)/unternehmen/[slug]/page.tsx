@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { REMOTE_TYPE_LABELS, FUNDING_STAGE_LABELS, REVIEW_DIMENSION_LABELS } from '@salescareerhub/config';
-import { formatSalaryRange } from '@salescareerhub/utils';
+import { REMOTE_TYPE_LABELS, FUNDING_STAGE_LABELS, REVIEW_DIMENSION_LABELS } from '@/lib/config';
+import { formatSalaryRange } from '@/lib/utils';
 import {
   Building2, MapPin, Globe, Users, Shield, Star, Briefcase, ArrowLeft, ExternalLink,
 } from 'lucide-react';

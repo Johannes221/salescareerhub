@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { formatRelativeDate } from '@salescareerhub/utils';
+import { formatRelativeDate } from '@/lib/utils';
 import { validateFile } from '@/lib/gdpr';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { getIdToken } from '@/lib/auth/client';
 import { FileText, Upload, Trash2, AlertCircle, CheckCircle, Shield } from 'lucide-react';
 
 export default function CandidateDocumentsPage() {

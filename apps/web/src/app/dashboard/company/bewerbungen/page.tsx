@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { APPLICATION_STATUS_LABELS } from '@salescareerhub/config';
-import { formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { APPLICATION_STATUS_LABELS } from '@/lib/config';
+import { formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Users, Briefcase, Star, ExternalLink } from 'lucide-react';
 
 export default function CompanyBewerbungenPage() {

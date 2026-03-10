@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { getIdToken } from '@/lib/auth/client';
 import { Trophy, Star, Shield, RefreshCw } from 'lucide-react';
 
 export default function AdminRankingsPage() {

@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { companyProfileSchema } from '@salescareerhub/utils';
+import { companyProfileSchema } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { COUNTRIES, FUNDING_STAGES, FUNDING_STAGE_LABELS, COMPANY_SIZES, REMOTE_TYPES, REMOTE_TYPE_LABELS } from '@salescareerhub/config';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { COUNTRIES, FUNDING_STAGES, FUNDING_STAGE_LABELS, COMPANY_SIZES, REMOTE_TYPES, REMOTE_TYPE_LABELS } from '@/lib/config';
+import { getIdToken } from '@/lib/auth/client';
 import { Save, CheckCircle, AlertCircle, Building2, Globe, MapPin } from 'lucide-react';
 import type { z } from 'zod';
 

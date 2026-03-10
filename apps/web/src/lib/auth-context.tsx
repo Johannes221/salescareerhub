@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthChange, logout as firebaseLogout, getIdToken, type FirebaseUser } from '@salescareerhub/auth/client';
-import type { User } from '@salescareerhub/types';
+import { onAuthChange, logout as firebaseLogout, getIdToken, type FirebaseUser } from '@/lib/auth/client';
+import type { User } from '@/lib/types';
 
 interface AuthContextType {
   firebaseUser: FirebaseUser | null;

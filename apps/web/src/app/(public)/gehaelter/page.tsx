@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatCurrency } from '@salescareerhub/utils';
-import { COUNTRIES, SENIORITY_LABELS } from '@salescareerhub/config';
+import { formatCurrency } from '@/lib/utils';
+import { COUNTRIES, SENIORITY_LABELS } from '@/lib/config';
 import { TrendingUp, BarChart3 } from 'lucide-react';
 
 export default function GehaelterPage() {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@salescareerhub/db';
-import { verifyIdToken } from '@salescareerhub/auth/server';
+import { prisma } from '@/lib/db';
+import { verifyIdToken } from '@/lib/auth/server';
 import { generateRankingSnapshots, getCurrentRankingPeriod, DEFAULT_RANKING_CATEGORY } from '@/lib/rankings';
 
 async function requireAdmin(req: NextRequest) {

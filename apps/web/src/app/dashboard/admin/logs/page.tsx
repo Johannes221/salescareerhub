@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Activity, Shield } from 'lucide-react';
 
 const ACTION_LABELS: Record<string, string> = {

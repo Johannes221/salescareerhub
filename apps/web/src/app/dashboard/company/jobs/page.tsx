@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { JOB_STATUS_LABELS } from '@salescareerhub/config';
-import { formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { JOB_STATUS_LABELS } from '@/lib/config';
+import { formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Briefcase, Plus, Eye, Users, MapPin } from 'lucide-react';
 
 export default function CompanyJobsPage() {

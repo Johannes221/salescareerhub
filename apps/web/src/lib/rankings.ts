@@ -1,4 +1,4 @@
-import { prisma } from '@salescareerhub/db';
+import { prisma } from '@/lib/db';
 
 export const DEFAULT_RANKING_CATEGORY = 'general';
 

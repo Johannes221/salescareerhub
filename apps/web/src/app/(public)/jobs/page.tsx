@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { JOB_ROLES, COUNTRIES, REMOTE_TYPE_LABELS, SENIORITY_LABELS, EMPLOYMENT_TYPE_LABELS, SOURCE_TYPE_LABELS } from '@salescareerhub/config';
-import { formatSalaryRange } from '@salescareerhub/utils';
+import { JOB_ROLES, COUNTRIES, REMOTE_TYPE_LABELS, SENIORITY_LABELS, EMPLOYMENT_TYPE_LABELS, SOURCE_TYPE_LABELS } from '@/lib/config';
+import { formatSalaryRange } from '@/lib/utils';
 import { Search, MapPin, Briefcase, Building2, Filter, X, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 
 export default function JobsPage() {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@salescareerhub/db';
+import { prisma } from '@/lib/db';
 import { ensureRankingSnapshots, getCurrentRankingPeriod, DEFAULT_RANKING_CATEGORY } from '@/lib/rankings';
 
 export async function GET(req: NextRequest) {

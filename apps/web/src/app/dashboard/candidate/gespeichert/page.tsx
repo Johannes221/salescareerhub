@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { REMOTE_TYPE_LABELS } from '@salescareerhub/config';
-import { formatSalaryRange, formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { REMOTE_TYPE_LABELS } from '@/lib/config';
+import { formatSalaryRange, formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Heart, Building2, MapPin, Briefcase, Trash2 } from 'lucide-react';
 
 export default function SavedJobsPage() {

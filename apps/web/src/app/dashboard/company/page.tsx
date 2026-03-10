@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { getIdToken } from '@/lib/auth/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AnalyticsBars } from '@/components/ui/analytics-bars';
 import { EmptyState } from '@/components/ui/empty-state';
-import { JOB_STATUS_LABELS } from '@salescareerhub/config';
+import { JOB_STATUS_LABELS } from '@/lib/config';
 import { BarChart3, Briefcase, Building2, Eye, FileText, Plus, Settings, TrendingUp, Users } from 'lucide-react';
 
 type CompanyDashboardData = {

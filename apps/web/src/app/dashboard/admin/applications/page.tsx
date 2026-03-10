@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { APPLICATION_STATUS, APPLICATION_STATUS_LABELS } from '@salescareerhub/config';
-import { formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { APPLICATION_STATUS, APPLICATION_STATUS_LABELS } from '@/lib/config';
+import { formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Users, Briefcase, Star, Send, MessageSquare, ChevronDown, ChevronUp, Save, CheckCircle } from 'lucide-react';
 
 export default function AdminApplicationsPage() {

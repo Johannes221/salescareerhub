@@ -7,9 +7,9 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatRelativeDate } from '@salescareerhub/utils';
-import { APPLICATION_STATUS_LABELS } from '@salescareerhub/config';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { formatCurrency, formatRelativeDate } from '@/lib/utils';
+import { APPLICATION_STATUS_LABELS } from '@/lib/config';
+import { getIdToken } from '@/lib/auth/client';
 import { ArrowLeft, Download, Eye, EyeOff, Linkedin, Mail, MapPin, Phone } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@salescareerhub/db';
-import { verifyIdToken } from '@salescareerhub/auth/server';
-import { slugify } from '@salescareerhub/utils';
+import { prisma } from '@/lib/db';
+import { verifyIdToken } from '@/lib/auth/server';
+import { slugify } from '@/lib/utils';
 
 async function requireAdmin(req: NextRequest) {
   const authHeader = req.headers.get('authorization');

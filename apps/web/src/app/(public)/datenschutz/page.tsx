@@ -1,5 +1,5 @@
 import React from 'react';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { APP_CONFIG } from '@/lib/config';
 
 export default function DatenschutzPage() {
   return (

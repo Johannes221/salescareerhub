@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { JOB_ROLES, SENIORITY_LEVELS, SENIORITY_LABELS, COUNTRIES } from '@salescareerhub/config';
-import { formatCurrency } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { JOB_ROLES, SENIORITY_LEVELS, SENIORITY_LABELS, COUNTRIES } from '@/lib/config';
+import { formatCurrency } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { TrendingUp, Plus, Edit, Trash2, Save, X } from 'lucide-react';
 
 const emptyForm = {

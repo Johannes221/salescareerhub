@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CONTENT_TYPES, CONTENT_TYPE_LABELS } from '@salescareerhub/config';
-import { formatRelativeDate, slugify } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { CONTENT_TYPES, CONTENT_TYPE_LABELS } from '@/lib/config';
+import { formatRelativeDate, slugify } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { BookOpen, Plus, Save, Edit, Eye, EyeOff, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function AdminContentPage() {

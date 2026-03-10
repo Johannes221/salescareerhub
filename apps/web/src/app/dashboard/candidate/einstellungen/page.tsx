@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { getIdToken } from '@/lib/auth/client';
 import { Settings, Download, Trash2, AlertCircle, CheckCircle, Shield } from 'lucide-react';
 
 export default function CandidateSettingsPage() {

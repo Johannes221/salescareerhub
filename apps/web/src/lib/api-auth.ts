@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyIdToken } from '@salescareerhub/auth/server';
-import { prisma } from '@salescareerhub/db';
-import type { Role } from '@salescareerhub/config';
+import { verifyIdToken } from '@/lib/auth/server';
+import { prisma } from '@/lib/db';
+import type { Role } from '@/lib/config';
 
 interface AuthUser {
   id: string;

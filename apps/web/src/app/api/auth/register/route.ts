@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyIdToken } from '@salescareerhub/auth/server';
-import { prisma } from '@salescareerhub/db';
+import { verifyIdToken } from '@/lib/auth/server';
+import { prisma } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {

@@ -7,8 +7,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { REVIEW_DIMENSION_LABELS } from '@salescareerhub/config';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { REVIEW_DIMENSION_LABELS } from '@/lib/config';
+import { getIdToken } from '@/lib/auth/client';
 import { Star, ArrowLeft, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 
 export default function ReviewPage() {

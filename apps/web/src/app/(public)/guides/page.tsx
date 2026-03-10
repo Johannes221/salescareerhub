@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CONTENT_TYPE_LABELS } from '@salescareerhub/config';
-import { formatRelativeDate } from '@salescareerhub/utils';
+import { CONTENT_TYPE_LABELS } from '@/lib/config';
+import { formatRelativeDate } from '@/lib/utils';
 import { BookOpen } from 'lucide-react';
 
 export default function GuidesPage() {

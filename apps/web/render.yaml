@@ -1,0 +1,46 @@
+services:
+  # Web Service
+  - type: web
+    name: salescareerhub
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      # MongoDB Connection - musst du in Render UI setzen
+      - key: DATABASE_URL
+        sync: false
+      # Firebase Configuration - musst du in Render UI setzen  
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false
+      - key: FIREBASE_ADMIN_PROJECT_ID
+        sync: false
+      - key: FIREBASE_ADMIN_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_ADMIN_PRIVATE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://salescareerhub.onrender.com
+      - key: NEXT_PUBLIC_APP_NAME
+        value: SalesCareerHub
+
+# Optional: MongoDB Atlas Add-on
+databases:
+  - name: salescareerhub-db
+    plan: free
+    databaseName: salescareerhub
+    ipAllowList: [] # Erlaube alle IPs für Render

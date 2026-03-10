@@ -3,7 +3,7 @@
 import React from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { APP_CONFIG } from '@/lib/config';
 import { Cog, Globe, Shield, Database } from 'lucide-react';
 
 export default function AdminSettingsPage() {

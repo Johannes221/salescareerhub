@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { COUNTRIES } from '@salescareerhub/config';
+import { COUNTRIES } from '@/lib/config';
 import { Trophy, Star, Building2, Shield, TrendingUp } from 'lucide-react';
 
 export default function RankingsPage() {

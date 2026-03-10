@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { APP_CONFIG } from '@/lib/config';
 
 const inter = Inter({ subsets: ['latin'] });
 

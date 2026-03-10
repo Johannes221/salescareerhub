@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { COUNTRIES, COMPANY_SIZES, FUNDING_STAGES, FUNDING_STAGE_LABELS } from '@salescareerhub/config';
+import { COUNTRIES, COMPANY_SIZES, FUNDING_STAGES, FUNDING_STAGE_LABELS } from '@/lib/config';
 import { Building2, Shield, Star, Search, MapPin, Filter, X } from 'lucide-react';
 
 export default function UnternehmenPage() {

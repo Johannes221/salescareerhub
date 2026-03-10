@@ -3,10 +3,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { APP_CONFIG } from '@/lib/config';
 import {
-  Target, Users, Shield, TrendingUp, ArrowRight, CheckCircle,
-  Briefcase, Building2, Award, GraduationCap, Globe,
+  ArrowRight, CheckCircle, Briefcase, Building2, Award, Globe,
 } from 'lucide-react';
 
 export default function UeberUnsPage() {
@@ -16,172 +15,112 @@ export default function UeberUnsPage() {
       <section className="bg-gradient-to-b from-primary/5 via-background to-background">
         <div className="container py-20 text-center max-w-4xl">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl mb-6">
-            Wir kennen deine Welt.{' '}
-            <span className="text-primary">Weil wir aus ihr kommen.</span>
+            Ich rekrutiere Software-Sales-Rollen,{' '}
+            <span className="text-primary">weil ich sie selbst gemacht habe.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            {APP_CONFIG.name} ist keine klassische Recruiting-Agentur. Wir sind ehemalige SaaS-Operator, die Recruiting so machen, wie wir es uns als Hiring Manager selbst gewünscht hätten.
+            Hier erfahrt ihr, wer hinter {APP_CONFIG.name} steckt – und warum das einen Unterschied für euch macht.
           </p>
         </div>
       </section>
 
-      {/* Mission */}
-      <section className="container py-16 max-w-4xl">
-        <div className="prose prose-lg max-w-none mb-12">
-          <h2 className="text-2xl font-bold">Unsere Mission</h2>
-          <p className="text-muted-foreground">
-            Die meisten Recruiting-Agenturen verstehen SaaS nicht. Sie kennen den Unterschied zwischen einem SDR und einem BDR nicht, wissen nicht, was ein gutes Discovery Call aussieht, und bewerten Kandidaten nach Keywords statt nach echtem Potenzial.
-          </p>
-          <p className="text-muted-foreground">
-            Wir haben selbst in SaaS-Teams gearbeitet – in Sales, Customer Success und Revenue. Wir wissen, was eine gute Hire ausmacht, weil wir diese Rollen selbst gelebt haben. {APP_CONFIG.name} verbindet operative Erfahrung mit modernem Recruiting: erfolgsbasiert, transparent und über eine eigene Plattform statt E-Mail-Chaos.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          {[
-            { icon: Target, title: 'Spezialisiert auf SaaS-GTM', desc: 'Kein General Recruiting. Wir besetzen ausschließlich Sales, CS, Marketing und RevOps in SaaS-Unternehmen.' },
-            { icon: Shield, title: 'Erfolgsbasiert & transparent', desc: 'Kein Retainer, keine Vorabkosten. Ihr zahlt nur bei erfolgreichem Hire – so einfach ist das.' },
-            { icon: Users, title: 'Geprüfte Kandidaten', desc: 'Jeder Kandidat wird persönlich bewertet. Keine ungeprüften CVs, keine Masse – nur Qualität.' },
-            { icon: TrendingUp, title: 'Plattform statt Papierkram', desc: 'Unser Cockpit gibt euch Echtzeit-Überblick über Kandidaten, Status und Bewertungen – alles an einem Ort.' },
-          ].map((item) => (
-            <div key={item.title} className="flex gap-4">
-              <item.icon className="h-8 w-8 text-primary shrink-0 mt-1" />
-              <div>
-                <h3 className="font-semibold mb-1">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
-              </div>
+      {/* Founder Section – narrative, not CV */}
+      <section className="container py-16 max-w-5xl">
+        <div className="grid md:grid-cols-5 gap-10 items-start">
+          {/* Photo */}
+          <div className="md:col-span-2 flex justify-center">
+            <div className="relative w-64 h-80 rounded-2xl overflow-hidden bg-muted shadow-lg">
+              <Image
+                src="/images/founder.jpg"
+                alt="Johan – Gründer von SalesCareerHub"
+                fill
+                className="object-cover"
+                priority
+              />
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      {/* Founder Section */}
-      <section className="bg-muted/50 py-16">
-        <div className="container max-w-5xl">
-          <h2 className="text-3xl font-bold text-center mb-12">Der Gründer</h2>
-          <div className="grid md:grid-cols-5 gap-8 items-start">
-            {/* Photo */}
-            <div className="md:col-span-2 flex justify-center">
-              <div className="relative w-64 h-80 rounded-2xl overflow-hidden bg-muted shadow-lg">
-                <Image
-                  src="/images/founder.jpg"
-                  alt="Gründer von SalesCareerHub"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-            </div>
+          {/* Bio – narrative framing */}
+          <div className="md:col-span-3">
+            <h2 className="text-2xl font-bold mb-1">Johan</h2>
+            <p className="text-primary font-semibold mb-6">Gründer – {APP_CONFIG.name}</p>
 
-            {/* Bio & CV */}
-            <div className="md:col-span-3">
-              <h3 className="text-2xl font-bold mb-2">Johan</h3>
-              <p className="text-primary font-semibold mb-4">Founder & CEO – {APP_CONFIG.name}</p>
-              <p className="text-muted-foreground mb-6">
-                Bevor ich {APP_CONFIG.name} gegründet habe, habe ich selbst jahrelang in SaaS-Unternehmen gearbeitet – als SDR, Junior AE und Account Executive. Ich kenne die Herausforderungen auf beiden Seiten: als Kandidat, der eine passende Rolle sucht, und als Teil von Revenue-Teams, die schnell wachsen müssen. Genau diese Erfahrung bringe ich in jedes Mandat ein.
+            <div className="space-y-4 text-muted-foreground leading-relaxed">
+              <p>
+                Ich habe den Software-Vertrieb von der Pike auf kennengelernt. Als SDR, Junior AE und Account Executive habe ich in verschiedenen SaaS-Unternehmen gearbeitet – von Startups mit fünf Leuten im Sales-Team bis hin zu Enterprise-Zyklen mit sechsstelligen Deals.
               </p>
-
-              <h4 className="font-semibold mb-4 text-lg">Beruflicher Werdegang</h4>
-              <div className="space-y-4">
-                {[
-                  {
-                    role: 'Account Executive',
-                    company: 'INTEGRTR',
-                    period: '2025 – Heute',
-                    detail: 'Hybrid HR-Landschaften (SAP HCM & SuccessFactors) – Enterprise SaaS Sales',
-                    tags: ['SAP SuccessFactors', 'SaaS', 'Enterprise Sales'],
-                  },
-                  {
-                    role: 'Account Executive → SDR → Junior AE',
-                    company: 'NUNAMI',
-                    period: '2023 – 2025',
-                    detail: 'Revenue verdoppelt innerhalb von 18 Monaten (multiple six figures). Internationale Marktexpansion. Aufbau einer Sales-Organisation mit 2 SDRs.',
-                    tags: ['HubSpot', 'SaaS', 'Sales Leadership', 'International'],
-                  },
-                  {
-                    role: 'Consulting – Process Management',
-                    company: 'Torsten Diemer Consulting',
-                    period: '2022 – 2023',
-                    detail: 'End-to-End Process Management, SaaS-Geschäftsmodelle für KMU, Bachelorarbeit zu Software-Rollouts.',
-                    tags: ['SaaS', 'BPMN', 'Prozessmanagement'],
-                  },
-                  {
-                    role: 'Consulting – Digital Compliance',
-                    company: 'KPMG Deutschland',
-                    period: '2021 – 2022',
-                    detail: 'Interne Kontrollsysteme, SOC1/SOC2/BSI C5 Audits, S/4HANA-Implementierung.',
-                    tags: ['Consulting', 'Compliance', 'SAP S/4HANA'],
-                  },
-                  {
-                    role: 'Quality Assurance – Software',
-                    company: 'zetVisions GmbH',
-                    period: '2020 – 2021',
-                    detail: 'Software-Qualitätssicherung in einem B2B-SaaS-Umfeld.',
-                    tags: ['QA', 'Software', 'JIRA'],
-                  },
-                ].map((job, i) => (
-                  <div key={i} className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <div className="h-3 w-3 rounded-full bg-primary mt-1.5 shrink-0" />
-                      {i < 4 && <div className="w-px flex-1 bg-border mt-1" />}
-                    </div>
-                    <div className="pb-2">
-                      <p className="font-semibold text-sm">{job.role}</p>
-                      <p className="text-sm text-primary">{job.company} · {job.period}</p>
-                      <p className="text-sm text-muted-foreground mt-1">{job.detail}</p>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {job.tags.map((tag) => (
-                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 p-4 rounded-lg bg-background border">
-                <p className="text-sm text-muted-foreground italic">
-                  &ldquo;Ich habe selbst erlebt, wie frustrierend es ist, mit Recruitern zu arbeiten, die SaaS nicht verstehen. Deshalb habe ich {APP_CONFIG.name} gegründet – eine Agentur, die von echten SaaS-Profis geführt wird und nur Kandidaten vorstellt, die wir selbst einstellen würden.&rdquo;
-                </p>
-              </div>
+              <p>
+                Diese Stationen haben mir verschiedene Perspektiven gegeben: Ich weiß, wie sich ein SDR-Alltag anfühlt, was ein Mid-Market-AE an einem guten Produkt braucht, und welche Dynamiken in Enterprise-Sales-Organisationen herrschen. Dazu kommen Erfahrungen aus dem Consulting-Bereich – unter anderem bei KPMG – wo ich gelernt habe, strukturiert zu analysieren, sauber zu arbeiten und komplexe Projekte zu steuern.
+              </p>
+              <p>
+                Irgendwann habe ich gemerkt: Die meisten Recruiter, die Software-Sales-Rollen besetzen, verstehen die Rolle nicht. Sie wissen nicht, wie ein guter Discovery Call klingt, was den Unterschied zwischen einem guten und einem großartigen AE ausmacht, oder warum ein Candidate eigentlich wirklich wechseln will. Das hat mich frustriert – auf beiden Seiten des Tisches.
+              </p>
+              <p className="font-medium text-foreground">
+                Deshalb gibt es {APP_CONFIG.name}: Eine Recruiting-Agentur, die ausschließlich Software-Sales-Rollen besetzt – geführt von jemandem, der diese Welt kennt und Kandidaten danach beurteilt, ob sie wirklich in die Rolle passen.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Why Founder-Led Matters */}
-      <section className="container py-16 max-w-4xl">
-        <h2 className="text-3xl font-bold text-center mb-4">Warum ein Gründer aus der Branche?</h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-          Traditionelle Recruiter sprechen über SaaS. Wir haben es gelebt.
-        </p>
-        <div className="grid md:grid-cols-3 gap-6">
+      {/* Erfahrungsbereiche – geframed, kein CV-Copy */}
+      <section className="bg-muted/50 py-16">
+        <div className="container max-w-4xl">
+          <h2 className="text-3xl font-bold text-center mb-4">Wo ich herkomme</h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
+            Meine Erfahrung spannt sich über verschiedene Unternehmensgrößen, Verkaufsmodelle und Branchen – und genau das macht den Unterschied beim Recruiting.
+          </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              {
+                icon: Briefcase,
+                title: 'Startup & Scale-up Sales',
+                desc: 'Ich habe in jungen SaaS-Unternehmen den Vertrieb mit aufgebaut – als einer der ersten im Team, mit direktem Einfluss auf Prozesse, Messaging und Teamstruktur.',
+              },
+              {
+                icon: Building2,
+                title: 'Enterprise & Mid-Market',
+                desc: 'Komplexe Sales-Cycles, mehrere Stakeholder, lange Entscheidungswege – ich kenne die Anforderungen, die Enterprise-Rollen an Kandidaten stellen.',
+              },
+              {
+                icon: Globe,
+                title: 'Internationale Märkte',
+                desc: 'Sales-Expansion in verschiedene europäische Märkte, inklusive Teamaufbau über Ländergrenzen hinweg. Ich verstehe, worauf es bei internationalem Hiring ankommt.',
+              },
+              {
+                icon: Award,
+                title: 'Big-4-Consulting & Prozesse',
+                desc: 'Meine Zeit bei KPMG hat mir beigebracht, strukturiert zu arbeiten, Prozesse zu durchdenken und komplexe Anforderungen sauber aufzubereiten – Skills, die im Recruiting Gold wert sind.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="flex gap-4 p-4 rounded-lg bg-background">
+                <item.icon className="h-8 w-8 text-primary shrink-0 mt-1" />
+                <div>
+                  <h3 className="font-semibold mb-1">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Was ich anbiete */}
+      <section className="container py-16 max-w-3xl">
+        <h2 className="text-3xl font-bold text-center mb-8">Was ich euch biete</h2>
+        <div className="space-y-4">
           {[
-            {
-              icon: Briefcase,
-              title: 'Operative Erfahrung',
-              desc: 'Von SDR über AE bis Revenue-Verantwortung – wir haben die Rollen selbst ausgefüllt, die wir besetzen.',
-            },
-            {
-              icon: Globe,
-              title: 'Internationaler Blick',
-              desc: 'Sales-Expansion in mehrere internationale Märkte – wir wissen, worauf es bei Cross-Border-Hiring ankommt.',
-            },
-            {
-              icon: Award,
-              title: 'Echte Ergebnisse',
-              desc: 'Revenue verdoppelt, Sales-Orgs aufgebaut, Enterprise-Deals geschlossen – aus dieser Praxis heraus bewerten wir Kandidaten.',
-            },
-          ].map((item) => (
-            <Card key={item.title} className="border-0 shadow-none bg-muted/50">
-              <CardContent className="pt-6 text-center">
-                <item.icon className="h-10 w-10 text-primary mx-auto mb-4" />
-                <h3 className="font-semibold mb-2">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
-              </CardContent>
-            </Card>
+            'Persönliche Beratung durch jemanden, der Software-Sales-Rollen aus eigener Erfahrung kennt',
+            'Ausschließlich vorqualifizierte Kandidaten – jedes Profil kommt mit meiner persönlichen Einschätzung',
+            'Rein erfolgsbasiert: keine Vorabkosten, kein Retainer, keine versteckten Gebühren',
+            'Eigene Plattform (Cockpit) statt E-Mail-Chaos – ihr behaltet jederzeit den Überblick',
+            'Fokus ausschließlich auf Software Sales – vom SDR bis zum CRO',
+            'Ehrliches Sparring zu Rollenprofilen, Marktlage und realistischen Erwartungen',
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+              <span>{item}</span>
+            </div>
           ))}
         </div>
       </section>
@@ -189,9 +128,9 @@ export default function UeberUnsPage() {
       {/* CTA */}
       <section className="bg-primary text-primary-foreground py-16">
         <div className="container text-center">
-          <h2 className="text-3xl font-bold mb-4">Bereit, mit echten SaaS-Profis zu arbeiten?</h2>
+          <h2 className="text-3xl font-bold mb-4">Klingt nach dem richtigen Ansatz?</h2>
           <p className="text-lg opacity-90 mb-8 max-w-xl mx-auto">
-            Kein Risiko, keine Vorabkosten. Erzählt uns von eurer offenen Rolle – wir liefern die passenden Kandidaten.
+            Erzählt mir von eurer offenen Rolle – ich sage euch ehrlich, ob und wie ich helfen kann. Unverbindlich, ohne Kosten.
           </p>
           <div className="flex gap-4 justify-center flex-col sm:flex-row">
             <Link href="/kontakt">

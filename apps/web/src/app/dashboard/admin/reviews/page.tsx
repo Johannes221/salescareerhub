@@ -5,9 +5,9 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { REVIEW_DIMENSION_LABELS } from '@salescareerhub/config';
-import { formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { REVIEW_DIMENSION_LABELS } from '@/lib/config';
+import { formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Star, CheckCircle, XCircle, Building2, MessageSquare } from 'lucide-react';
 
 export default function AdminReviewsPage() {

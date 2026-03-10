@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { APP_CONFIG } from '@salescareerhub/config';
+import { APP_CONFIG } from '@/lib/config';
 
 export function Footer() {
   return (
@@ -35,7 +35,7 @@ export function Footer() {
           <div>
             <h3 className="font-semibold mb-3">{APP_CONFIG.name}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              GTM-Recruiting für SaaS-Unternehmen. Erfolgsbasiert, mit Plattform, von ehemaligen SaaS-Operatorn.
+              Software-Sales-Recruiting. Erfolgsbasiert, persönlich geprüft, über eine eigene Plattform.
             </p>
             <p className="text-sm text-muted-foreground">
               {APP_CONFIG.contact.email}

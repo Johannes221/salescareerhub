@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { APPLICATION_STATUS_LABELS } from '@salescareerhub/config';
-import { formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { APPLICATION_STATUS_LABELS } from '@/lib/config';
+import { formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Briefcase, Building2, Clock, ArrowRight } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {

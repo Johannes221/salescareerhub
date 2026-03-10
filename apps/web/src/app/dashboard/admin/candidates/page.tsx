@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { getIdToken } from '@/lib/auth/client';
 import { Search, MapPin, Briefcase, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export default function AdminCandidatesPage() {

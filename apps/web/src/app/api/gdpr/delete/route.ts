@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@salescareerhub/db';
-import { verifyIdToken, deleteFirebaseUser } from '@salescareerhub/auth/server';
+import { prisma } from '@/lib/db';
+import { verifyIdToken, deleteFirebaseUser } from '@/lib/auth/server';
 
 export async function POST(req: NextRequest) {
   try {

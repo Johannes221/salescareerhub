@@ -5,9 +5,9 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { JOB_STATUS_LABELS, SOURCE_TYPE_LABELS, APPROVAL_STATUS } from '@salescareerhub/config';
-import { formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+import { JOB_STATUS_LABELS, SOURCE_TYPE_LABELS, APPROVAL_STATUS } from '@/lib/config';
+import { formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import { Briefcase, CheckCircle, XCircle, Star, Shield, Eye, Building2 } from 'lucide-react';
 
 export default function AdminJobsPage() {

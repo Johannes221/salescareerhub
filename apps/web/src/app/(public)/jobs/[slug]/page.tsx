@@ -10,9 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   REMOTE_TYPE_LABELS, SENIORITY_LABELS, EMPLOYMENT_TYPE_LABELS,
   SOURCE_TYPE_LABELS, APPLICATION_STATUS_LABELS,
-} from '@salescareerhub/config';
-import { formatSalaryRange, formatRelativeDate } from '@salescareerhub/utils';
-import { getIdToken } from '@salescareerhub/auth/client';
+} from '@/lib/config';
+import { formatSalaryRange, formatRelativeDate } from '@/lib/utils';
+import { getIdToken } from '@/lib/auth/client';
 import {
   Building2, MapPin, Briefcase, Clock, Euro, Shield, ArrowLeft,
   Heart, Send, CheckCircle, AlertCircle, Eye, Users,
