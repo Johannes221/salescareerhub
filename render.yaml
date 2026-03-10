@@ -1,4 +1,5 @@
 services:
+  # Render deployment configuration for SalesCareerHub
   - type: web
     name: salescareerhub
     env: node
