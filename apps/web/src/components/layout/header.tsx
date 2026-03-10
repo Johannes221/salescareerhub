@@ -8,13 +8,11 @@ import { APP_CONFIG } from '@salescareerhub/config';
 import { Menu, X, ChevronDown, LogOut, User, LayoutDashboard, Bell } from 'lucide-react';
 
 const publicNav = [
-  { href: '/jobs', label: 'Jobs' },
-  { href: '/unternehmen', label: 'Unternehmen' },
-  { href: '/gehaelter', label: 'Gehälter' },
-  { href: '/rankings', label: 'Rankings' },
   { href: '/fuer-unternehmen', label: 'Für Unternehmen' },
   { href: '/fuer-kandidaten', label: 'Für Kandidaten' },
-  { href: '/guides', label: 'Guides' },
+  { href: '/ueber-uns', label: 'Über uns' },
+  { href: '/jobs', label: 'Jobs' },
+  { href: '/kontakt', label: 'Kontakt' },
 ];
 
 export function Header() {

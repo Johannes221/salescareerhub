@@ -2,6 +2,8 @@ export {
   getFirebaseApp,
   getFirebaseAuth,
   loginWithEmail,
+  loginWithGoogle,
+  loginWithApple,
   registerWithEmail,
   resetPassword,
   logout,

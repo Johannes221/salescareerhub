@@ -1,13 +1,33 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { APP_CONFIG } from '@salescareerhub/config';
 import {
-  Search, Building2, TrendingUp, Users, Star, ArrowRight,
-  Briefcase, BarChart3, Shield, Target, Award, Zap,
+  ArrowRight, Shield, Target, Zap, CheckCircle, Users,
+  Monitor, Clock, Award, ChevronDown, ChevronUp, Briefcase,
+  BarChart3, UserCheck, Headphones, FileText, MessageSquare,
 } from 'lucide-react';
+
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="border-b last:border-b-0">
+      <button
+        className="flex w-full items-center justify-between py-5 text-left font-semibold hover:text-primary transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        {q}
+        {open ? <ChevronUp className="h-5 w-5 shrink-0 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />}
+      </button>
+      {open && <p className="pb-5 text-muted-foreground leading-relaxed">{a}</p>}
+    </div>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -17,68 +37,62 @@ export default function HomePage() {
         <div className="container py-20 md:py-32">
           <div className="mx-auto max-w-4xl text-center">
             <Badge variant="secondary" className="mb-4">
-              Spezialisiert auf Software Sales im DACH-Raum
+              Kein General Recruiting. 100 % SaaS-GTM.
             </Badge>
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              Deine Karriere im{' '}
-              <span className="text-primary">Software Sales</span>
-              {' '}startet hier
+              Wir vermitteln nicht.{' '}
+              <span className="text-primary">Wir bauen Revenue Teams.</span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground md:text-xl max-w-2xl mx-auto">
-              {APP_CONFIG.description}. Transparente Gehälter, verifizierte Unternehmen
-              und persönliche Recruiting-Begleitung.
+              Wir kommen aus Sales, CS und Revenue – nicht aus dem Recruiting.
+              Deshalb suchen wir anders: schneller, gezielter und mit echtem Verständnis für SaaS-GTM-Rollen.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/jobs">
+              <Link href="/kontakt">
                 <Button size="lg" className="w-full sm:w-auto text-base px-8">
-                  <Search className="mr-2 h-5 w-5" />
-                  Jobs entdecken
+                  Jetzt Gespräch vereinbaren
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link href="/fuer-unternehmen">
+              <Link href="/ueber-uns">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto text-base px-8">
-                  <Building2 className="mr-2 h-5 w-5" />
-                  Job kostenlos listen
+                  Warum wir?
                 </Button>
               </Link>
             </div>
           </div>
-
-          {/* Search Bar */}
-          <div className="mt-12 mx-auto max-w-2xl">
-            <form action="/jobs" method="GET" className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <input
-                  name="search"
-                  placeholder="Jobtitel, Rolle oder Unternehmen..."
-                  className="w-full h-12 pl-10 pr-4 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <Button type="submit" size="lg">Suchen</Button>
-            </form>
-          </div>
         </div>
       </section>
 
-      {/* USP Section */}
+      {/* USP Section – 4 Differentiators */}
       <section className="container py-16">
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-3">Vier Gründe, warum SaaS-Teams mit uns arbeiten</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Wir sind keine Generalisten. Wir sind GTM-Recruiting-Spezialisten mit operativer SaaS-Erfahrung.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
-              icon: Target,
-              title: 'Spezialisiert',
-              desc: 'Fokus auf Software Sales Rollen – SDR bis VP Sales. Keine generischen Stellenanzeigen.',
+              icon: UserCheck,
+              title: 'Operative SaaS-Erfahrung',
+              desc: 'Wir haben selbst in SaaS-Teams gearbeitet – als SDR, AE und im Revenue-Bereich. Wir verstehen, was zählt.',
             },
             {
-              icon: Shield,
-              title: 'Transparent & Verifiziert',
-              desc: 'Echte Gehaltsdaten, Unternehmens-Bewertungen und verifizierte Arbeitgeber im DACH-Raum.',
+              icon: Target,
+              title: '100 % Fokus auf SaaS-GTM',
+              desc: 'Sales, CS, Marketing & RevOps – kein General Recruiting. Wir besetzen nur Rollen, die wir wirklich verstehen.',
             },
             {
               icon: Zap,
-              title: 'Persönliche Begleitung',
-              desc: 'Kein anonymes Massenrecruiting. Wir screenen, beraten und begleiten dich persönlich.',
+              title: 'Schnelle Ergebnisse',
+              desc: 'Keine langen Suchphasen, kein CV-Raten. Erste qualifizierte Profile innerhalb weniger Tage.',
+            },
+            {
+              icon: Shield,
+              title: 'Erfolg statt Retainer',
+              desc: 'Ihr zahlt nur bei erfolgreichem Hire. Kein Risiko, volle Transparenz. Keine Vorabkosten.',
             },
           ].map((usp) => (
             <Card key={usp.title} className="border-0 shadow-none bg-muted/50">
@@ -92,176 +106,152 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Jobs Preview */}
-      <section className="container py-16">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold">Aktuelle Jobs</h2>
-            <p className="text-muted-foreground mt-1">Handverlesene Software Sales Positionen</p>
-          </div>
-          <Link href="/jobs">
-            <Button variant="ghost">
-              Alle Jobs <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            { title: 'Enterprise Account Executive', company: 'TechCorp GmbH', location: 'München', remote: 'Hybrid', salary: '80.000 – 120.000 €', ote: '140.000 – 200.000 €' },
-            { title: 'SDR – DACH Region', company: 'CloudScale AG', location: 'Berlin', remote: 'Remote', salary: '45.000 – 55.000 €', ote: '65.000 – 80.000 €' },
-            { title: 'Head of Sales DACH', company: 'DataFlow Solutions', location: 'Zürich', remote: 'Hybrid', salary: '120.000 – 150.000 €', ote: '200.000 – 280.000 €' },
-            { title: 'Mid-Market AE', company: 'SaaSify GmbH', location: 'Hamburg', remote: 'Vor Ort', salary: '65.000 – 85.000 €', ote: '110.000 – 150.000 €' },
-            { title: 'Sales Manager', company: 'SecureNet AG', location: 'Wien', remote: 'Hybrid', salary: '90.000 – 110.000 €', ote: '160.000 – 200.000 €' },
-            { title: 'BDR – Outbound', company: 'AI Analytics GmbH', location: 'Frankfurt', remote: 'Remote', salary: '42.000 – 52.000 €', ote: '60.000 – 75.000 €' },
-          ].map((job, i) => (
-            <Card key={i} className="hover:shadow-md transition-shadow cursor-pointer">
+      {/* Comparison Table: Traditional vs Us */}
+      <section className="bg-muted/50 py-16">
+        <div className="container max-w-4xl">
+          <h2 className="text-3xl font-bold text-center mb-12">Was uns unterscheidet</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-destructive/20">
               <CardContent className="pt-6">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Briefcase className="h-5 w-5 text-primary" />
-                  </div>
-                  <Badge variant="secondary">{job.remote}</Badge>
-                </div>
-                <h3 className="font-semibold mb-1">{job.title}</h3>
-                <p className="text-sm text-muted-foreground mb-3">{job.company} · {job.location}</p>
-                <div className="flex flex-col gap-1 text-sm">
-                  <span className="text-muted-foreground">Base: {job.salary}</span>
-                  <span className="font-medium text-primary">OTE: {job.ote}</span>
-                </div>
+                <h3 className="font-semibold text-lg mb-4 text-destructive">Traditionelles Recruiting</h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  {[
+                    'Generalist ohne Branchenkenntnis',
+                    'Fokus auf Lebenslauf-Keywords',
+                    'Lange Suchphasen, hohe CV-Raten',
+                    'Retainer-Modelle, Zahlung vorab',
+                    'Kommunikation per E-Mail-Chaos',
+                    'Ungeprüfte Kandidatenprofile',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-destructive mt-0.5">✕</span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Top Companies */}
-      <section className="bg-muted/50 py-16">
-        <div className="container">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold">Top Unternehmen</h2>
-              <p className="text-muted-foreground mt-1">Bestbewertete Software Sales Organisationen</p>
-            </div>
-            <Link href="/rankings">
-              <Button variant="ghost">
-                Alle Rankings <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              { name: 'TechCorp GmbH', rating: 4.5, reviews: 23, industry: 'Enterprise SaaS', verified: true },
-              { name: 'CloudScale AG', rating: 4.3, reviews: 18, industry: 'Cloud Infrastructure', verified: true },
-              { name: 'DataFlow Solutions', rating: 4.1, reviews: 12, industry: 'Data & Analytics', verified: false },
-            ].map((company, i) => (
-              <Card key={i} className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-12 w-12 rounded-lg bg-secondary flex items-center justify-center">
-                      <Building2 className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{company.name}</h3>
-                        {company.verified && <Shield className="h-4 w-4 text-primary" />}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{company.industry}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="ml-1 font-semibold">{company.rating}</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">({company.reviews} Bewertungen)</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Salary Insights Preview */}
-      <section className="container py-16">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold">Gehaltsübersicht</h2>
-            <p className="text-muted-foreground mt-1">Aktuelle Gehaltsdaten für Software Sales im DACH-Raum</p>
-          </div>
-          <Link href="/gehaelter">
-            <Button variant="ghost">
-              Alle Gehälter <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { role: 'SDR', base: '42.000 – 55.000 €', ote: '60.000 – 80.000 €' },
-            { role: 'Account Executive', base: '65.000 – 90.000 €', ote: '110.000 – 160.000 €' },
-            { role: 'Enterprise AE', base: '85.000 – 130.000 €', ote: '150.000 – 250.000 €' },
-            { role: 'Head of Sales', base: '110.000 – 160.000 €', ote: '180.000 – 300.000 €' },
-          ].map((item, i) => (
-            <Card key={i}>
+            <Card className="border-primary/30 bg-primary/5">
               <CardContent className="pt-6">
-                <h3 className="font-semibold mb-2">{item.role}</h3>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Base</span>
-                    <span>{item.base}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">OTE</span>
-                    <span className="font-medium text-primary">{item.ote}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">Deutschland · 2024</p>
+                <h3 className="font-semibold text-lg mb-4 text-primary">Unser Ansatz</h3>
+                <ul className="space-y-3 text-sm">
+                  {[
+                    'Operative SaaS-Erfahrung aus der Praxis',
+                    'Bewertung nach echtem Potenzial',
+                    'Shortlist in 7–10 Tagen',
+                    'Erfolgsbasiert – ihr zahlt nur bei Hire',
+                    'Eigene Plattform / Cockpit statt E-Mails',
+                    'Jeder Kandidat persönlich geprüft',
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
-          ))}
+          </div>
         </div>
       </section>
 
-      {/* How it Works – Candidates */}
-      <section className="bg-muted/50 py-16">
-        <div className="container">
-          <h2 className="text-3xl font-bold text-center mb-4">So funktioniert es für Kandidaten</h2>
-          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-            Kein anonymes Bewerben. Wir begleiten dich persönlich durch den gesamten Prozess.
+      {/* GTM Roles We Fill */}
+      <section className="container py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-3">Welche GTM-Rollen wir besetzen</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Strukturiert nach klaren Rollenbereichen entlang des Go-To-Market – von operativen Rollen bis zur Revenue-Verantwortung.
           </p>
-          <div className="grid md:grid-cols-4 gap-8">
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            {
+              icon: Briefcase,
+              area: 'Sales (New Business)',
+              goal: 'Pipeline aufbauen und Umsatz generieren.',
+              roles: ['SDR / BDR', 'Account Executive (SMB, MM & Enterprise)', 'Sales Leadership (Head / Director / VP)', 'CRO'],
+            },
+            {
+              icon: Headphones,
+              area: 'Customer Success',
+              goal: 'Time-to-Value, Nutzung und Bindung steigern.',
+              roles: ['Account Manager', 'Customer Success Manager', 'CS Leadership'],
+            },
+            {
+              icon: BarChart3,
+              area: 'Marketing',
+              goal: 'Nachfrage erzeugen und Pipeline skalieren.',
+              roles: ['Demand / Growth Marketing', 'Product Marketing', 'Marketing Leadership'],
+            },
+            {
+              icon: Monitor,
+              area: 'RevOps',
+              goal: 'Prozesse, Systeme und Daten für planbares Wachstum.',
+              roles: ['RevOps Manager', 'CRM / Sales Ops', 'RevOps Leadership'],
+            },
+          ].map((cat) => (
+            <Card key={cat.area}>
+              <CardContent className="pt-6">
+                <cat.icon className="h-8 w-8 text-primary mb-3" />
+                <h3 className="font-semibold mb-1">{cat.area}</h3>
+                <p className="text-xs text-muted-foreground mb-3">{cat.goal}</p>
+                <ul className="space-y-1">
+                  {cat.roles.map((r, i) => (
+                    <li key={i} className="text-sm flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      {r}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Platform / Cockpit Section */}
+      <section className="bg-muted/50 py-16">
+        <div className="container max-w-4xl">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-3">Euer Recruiting-Cockpit</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Kein E-Mail-Chaos, keine Excel-Listen. Ihr bekommt eine eigene Plattform, auf der ihr den gesamten Recruiting-Prozess in Echtzeit verfolgt.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
             {[
-              { step: '1', title: 'Profil erstellen', desc: 'Erstelle dein Kandidatenprofil mit deinen Zielen und Erfahrungen.' },
-              { step: '2', title: 'Jobs entdecken', desc: 'Durchsuche spezialisierte Software Sales Positionen.' },
-              { step: '3', title: 'Interesse bekunden', desc: 'Zeige Interesse an spannenden Positionen – wir melden uns bei dir.' },
-              { step: '4', title: 'Persönliche Begleitung', desc: 'Wir screenen, beraten und begleiten dich bis zum Vertragsangebot.' },
-            ].map((item) => (
-              <div key={item.step} className="text-center">
-                <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-lg font-bold">
-                  {item.step}
+              { icon: Monitor, title: 'Live-Dashboard', desc: 'Alle Kandidaten, Status-Updates und Bewertungen auf einen Blick – jederzeit zugänglich.' },
+              { icon: FileText, title: 'Kandidaten-Briefings', desc: 'Strukturierte Profile mit unserer Einschätzung – kein Lebenslauf-Raten.' },
+              { icon: MessageSquare, title: 'Direkter Austausch', desc: 'Kommunikation, Feedback und Rollen-Sparring an einem Ort.' },
+              { icon: Clock, title: 'Echtzeit-Tracking', desc: 'Seht in Echtzeit, wo jeder Kandidat im Prozess steht.' },
+            ].map((feat) => (
+              <div key={feat.title} className="flex gap-4 p-4 rounded-lg bg-background">
+                <feat.icon className="h-8 w-8 text-primary shrink-0 mt-1" />
+                <div>
+                  <h3 className="font-semibold mb-1">{feat.title}</h3>
+                  <p className="text-sm text-muted-foreground">{feat.desc}</p>
                 </div>
-                <h3 className="font-semibold mb-2">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it Works – Companies */}
+      {/* How it Works */}
       <section className="container py-16">
-        <h2 className="text-3xl font-bold text-center mb-4">So funktioniert es für Unternehmen</h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-          Listen Sie Ihre Sales-Positionen kostenlos und erreichen Sie qualifizierte Kandidaten.
+        <h2 className="text-3xl font-bold text-center mb-4">So funktioniert es</h2>
+        <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
+          Von der Bedarfsanalyse bis zur Einstellung – in vier klaren Schritten.
         </p>
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-4 gap-8">
           {[
-            { step: '1', title: 'Kostenlos registrieren', desc: 'Erstellen Sie Ihr Unternehmensprofil in wenigen Minuten.' },
-            { step: '2', title: 'Jobs veröffentlichen', desc: 'Listen Sie Ihre Software Sales Positionen – kostenlos und gezielt.' },
-            { step: '3', title: 'Kandidaten erhalten', desc: 'Wir screenen und empfehlen passende, qualifizierte Kandidaten.' },
+            { step: '01', title: 'Rollenbriefing & Bedarfsanalyse', desc: 'Gemeinsame Schärfung des Rollenprofils, Must-haves vs. Nice-to-haves und Interview-Kriterien.' },
+            { step: '02', title: 'Gezielte Ansprache', desc: 'Mit unserem Netzwerk identifizieren wir die passenden Kandidat:innen. Shortlist in 7–10 Tagen.' },
+            { step: '03', title: 'Evaluierung & Interviews', desc: 'Vorauswahl, Kandidaten-Briefings und aktive Unterstützung bei euren Interviews.' },
+            { step: '04', title: 'Onboarding & Nachbetreuung', desc: 'Auch nach der Einstellung bleiben wir in Kontakt und geben Marktfeedback.' },
           ].map((item) => (
             <div key={item.step} className="text-center">
-              <div className="h-12 w-12 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center mx-auto mb-4 text-lg font-bold">
+              <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-lg font-bold">
                 {item.step}
               </div>
               <h3 className="font-semibold mb-2">{item.title}</h3>
@@ -269,64 +259,60 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <div className="text-center mt-8">
-          <Link href="/fuer-unternehmen">
-            <Button size="lg">
-              Jetzt kostenlos Job listen <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="bg-muted/50 py-16">
+        <div className="container max-w-3xl">
+          <h2 className="text-3xl font-bold text-center mb-12">Häufig gestellte Fragen</h2>
+          <div className="bg-background rounded-lg border p-6">
+            <FAQItem
+              q="Was unterscheidet euch von anderen Recruiting-Agenturen?"
+              a="Wir sind keine klassischen Recruiter. Jeder bei uns hat selbst in SaaS-Unternehmen gearbeitet – als SDR, Account Executive oder im Revenue-Bereich. Dadurch verstehen wir eure Rollen aus erster Hand und können Kandidaten nach echtem Potenzial bewerten, nicht nur nach Keywords im Lebenslauf."
+            />
+            <FAQItem
+              q="Was bedeutet erfolgsbasiert – zahle ich wirklich nur bei Hire?"
+              a="Ja, zu 100 %. Wir arbeiten ohne Retainer und ohne Vorabkosten. Ihr zahlt ausschließlich, wenn wir euch erfolgreich einen Kandidaten vermittelt haben, der bei euch anfängt. Kein Risiko, volle Transparenz."
+            />
+            <FAQItem
+              q="Wie schnell bekomme ich erste Kandidaten?"
+              a="In der Regel erhaltet ihr innerhalb von 7–10 Tagen eine erste Shortlist mit qualifizierten Profilen. Wir arbeiten mit einem bestehenden Netzwerk aus geprüften SaaS-Professionals und können daher schnell liefern."
+            />
+            <FAQItem
+              q="Bekomme ich ungeprüfte Lebensläufe zugeschickt?"
+              a="Nein. Jeder Kandidat wird von uns persönlich geprüft und bewertet, bevor wir ihn euch vorstellen. Ihr bekommt strukturierte Briefings mit unserer Einschätzung – keine ungeprüften CVs."
+            />
+            <FAQItem
+              q="Was ist das Recruiting-Cockpit?"
+              a="Unser Cockpit ist eine eigene Plattform, auf der ihr den gesamten Prozess verfolgen könnt: Kandidaten-Status, Briefings, Feedback und Kommunikation – alles an einem Ort. Kein E-Mail-Chaos, kein Papierkram."
+            />
+            <FAQItem
+              q="Welche Rollen besetzt ihr?"
+              a="Wir fokussieren uns auf GTM-Rollen in SaaS-Unternehmen: Sales (SDR bis CRO), Customer Success, Marketing und RevOps. Von der operativen Ebene bis zum C-Level."
+            />
+          </div>
         </div>
       </section>
 
       {/* CTA Section */}
       <section className="bg-primary text-primary-foreground py-16">
         <div className="container text-center">
-          <h2 className="text-3xl font-bold mb-4">Bereit für den nächsten Karriereschritt?</h2>
+          <h2 className="text-3xl font-bold mb-4">Bereit, euer Revenue Team aufzubauen?</h2>
           <p className="text-lg opacity-90 mb-8 max-w-xl mx-auto">
-            Registriere dich kostenlos und erhalte Zugang zu exklusiven Software Sales Positionen im DACH-Raum.
+            Kein Risiko, keine Vorabkosten. Erzählt uns von eurer offenen Rolle – wir liefern die passenden Kandidaten.
           </p>
           <div className="flex gap-4 justify-center flex-col sm:flex-row">
-            <Link href="/registrieren">
-              <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                Kostenlos registrieren
-              </Button>
-            </Link>
             <Link href="/kontakt">
+              <Button size="lg" variant="secondary" className="w-full sm:w-auto">
+                Gespräch vereinbaren <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/ueber-uns">
               <Button size="lg" variant="outline" className="w-full sm:w-auto border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10">
-                Kontakt aufnehmen
+                Mehr über uns
               </Button>
             </Link>
           </div>
-        </div>
-      </section>
-
-      {/* Content Preview */}
-      <section className="container py-16">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold">Karriere-Guides</h2>
-            <p className="text-muted-foreground mt-1">Tipps und Insights für deine Sales-Karriere</p>
-          </div>
-          <Link href="/guides">
-            <Button variant="ghost">
-              Alle Guides <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { title: 'Gehaltsverhandlung im Software Sales', type: 'Guide', excerpt: 'So verhandelst du dein OTE optimal – von der Vorbereitung bis zum Abschluss.' },
-            { title: 'Vom SDR zum Enterprise AE', type: 'Karriere-Guide', excerpt: 'Der typische Karrierepfad im Software Sales und wie du ihn beschleunigst.' },
-            { title: 'DACH Sales Markt 2024', type: 'Marktreport', excerpt: 'Aktuelle Trends, Gehaltsentwicklungen und die gefragtesten Sales-Rollen.' },
-          ].map((post, i) => (
-            <Card key={i} className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-6">
-                <Badge variant="outline" className="mb-3">{post.type}</Badge>
-                <h3 className="font-semibold mb-2">{post.title}</h3>
-                <p className="text-sm text-muted-foreground">{post.excerpt}</p>
-              </CardContent>
-            </Card>
-          ))}
         </div>
       </section>
     </>

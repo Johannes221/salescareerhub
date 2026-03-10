@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users, Search, Shield, TrendingUp, ArrowRight, CheckCircle, BarChart3, Star } from 'lucide-react';
+import { UserCheck, Shield, TrendingUp, ArrowRight, CheckCircle, Target, Zap } from 'lucide-react';
 
 export default function FuerKandidatenPage() {
   return (
@@ -10,14 +10,14 @@ export default function FuerKandidatenPage() {
       <section className="bg-gradient-to-b from-primary/5 via-background to-background">
         <div className="container py-20 text-center">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl mb-6">
-            Deine Karriere im<br /><span className="text-primary">Software Sales</span>
+            Dein nächster Karriereschritt im<br /><span className="text-primary">SaaS Sales</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-            Transparente Gehälter, ehrliche Bewertungen und persönliche Recruiting-Begleitung für deine nächste Sales-Rolle.
+            Wir sind keine klassischen Recruiter – wir kommen selbst aus dem SaaS-Vertrieb. Deshalb verstehen wir, was du suchst, und verbinden dich mit den besten Unternehmen.
           </p>
           <div className="flex gap-4 justify-center flex-col sm:flex-row">
             <Link href="/registrieren"><Button size="lg">Kostenlos registrieren <ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
-            <Link href="/jobs"><Button size="lg" variant="outline">Jobs entdecken</Button></Link>
+            <Link href="/jobs"><Button size="lg" variant="outline">Offene Positionen</Button></Link>
           </div>
         </div>
       </section>
@@ -25,10 +25,10 @@ export default function FuerKandidatenPage() {
       <section className="container py-16">
         <div className="grid md:grid-cols-4 gap-8">
           {[
-            { icon: Search, title: 'Spezialisierte Jobs', desc: 'Nur Software Sales Rollen im DACH-Raum – von SDR bis VP Sales.' },
-            { icon: TrendingUp, title: 'Gehaltsdaten', desc: 'Aktuelle Salary Benchmarks für jede Rolle und Seniority.' },
-            { icon: Star, title: 'Unternehmensbewertungen', desc: 'Ehrliche Reviews von Sales-Profis über ihre Arbeitgeber.' },
-            { icon: Shield, title: 'Persönliche Begleitung', desc: 'Wir screenen und begleiten dich – kein anonymes Massenrecruiting.' },
+            { icon: UserCheck, title: 'Berater aus der Praxis', desc: 'Dein Ansprechpartner hat selbst als SDR, AE oder im Revenue-Bereich gearbeitet – kein generischer Recruiter.' },
+            { icon: Target, title: 'Passende Rollen', desc: 'Wir kennen die SaaS-GTM-Welt und matchen dich nur mit Positionen, die wirklich zu dir passen.' },
+            { icon: Shield, title: 'Vertraulich & persönlich', desc: 'Kein anonymes Massenrecruiting. Wir lernen dich kennen und begleiten dich individuell.' },
+            { icon: Zap, title: 'Schneller Prozess', desc: 'Kurze Wege, direkter Kontakt zum Hiring Manager. Kein wochenlanges Warten.' },
           ].map((item) => (
             <Card key={item.title} className="border-0 shadow-none bg-muted/50">
               <CardContent className="pt-6 text-center">
@@ -47,10 +47,10 @@ export default function FuerKandidatenPage() {
           <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">Kein anonymes Bewerben. Wir begleiten dich persönlich.</p>
           <div className="grid md:grid-cols-4 gap-8">
             {[
-              { step: '1', title: 'Profil erstellen', desc: 'Registriere dich und erstelle dein Sales-Profil.' },
-              { step: '2', title: 'Jobs entdecken', desc: 'Durchsuche spezialisierte Software Sales Positionen.' },
-              { step: '3', title: 'Interesse bekunden', desc: 'Zeige Interesse an spannenden Rollen.' },
-              { step: '4', title: 'Begleitung erhalten', desc: 'Wir screenen, beraten und begleiten dich bis zum Angebot.' },
+              { step: '01', title: 'Profil erstellen', desc: 'Registriere dich und teile uns deine Erfahrung und Ziele mit.' },
+              { step: '02', title: 'Persönliches Gespräch', desc: 'Wir lernen dich kennen – deine Stärken, Wünsche und Karriereziele.' },
+              { step: '03', title: 'Passende Rollen', desc: 'Wir stellen dir gezielt Positionen vor, die wirklich zu dir passen.' },
+              { step: '04', title: 'Interview-Begleitung', desc: 'Wir bereiten dich vor, begleiten den Prozess und verhandeln mit dir.' },
             ].map((item) => (
               <div key={item.step} className="text-center">
                 <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-lg font-bold">{item.step}</div>
@@ -67,12 +67,12 @@ export default function FuerKandidatenPage() {
           <h2 className="text-3xl font-bold text-center mb-8">Was du bekommst</h2>
           <div className="space-y-4">
             {[
-              'Zugang zu exklusiven Software Sales Positionen im DACH-Raum',
-              'Transparente Gehaltsdaten für informierte Entscheidungen',
-              'Ehrliche Unternehmensbewertungen von Sales-Profis',
+              'Zugang zu exklusiven SaaS-GTM-Positionen – von SDR bis CRO',
+              'Beratung durch ehemalige SaaS-Sales-Profis, die deine Welt kennen',
               'Persönliche Begleitung durch den gesamten Bewerbungsprozess',
-              'Kein anonymes Bewerben – wir kennen dich und deine Ziele',
-              'Kostenlos und unverbindlich',
+              'Ehrliche Einschätzung zu Rollen, Unternehmen und Gehaltsrahmen',
+              'Vertrauliche Behandlung – dein aktueller Arbeitgeber erfährt nichts',
+              'Komplett kostenlos und unverbindlich für dich',
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
@@ -83,6 +83,21 @@ export default function FuerKandidatenPage() {
           <div className="text-center mt-8">
             <Link href="/registrieren"><Button size="lg">Jetzt kostenlos registrieren</Button></Link>
           </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="bg-primary text-primary-foreground py-16">
+        <div className="container text-center">
+          <h2 className="text-3xl font-bold mb-4">Bereit für deinen nächsten Karriereschritt?</h2>
+          <p className="text-lg opacity-90 mb-8 max-w-xl mx-auto">
+            Lass dich von echten SaaS-Profis beraten – kostenlos und vertraulich.
+          </p>
+          <Link href="/registrieren">
+            <Button size="lg" variant="secondary">
+              Jetzt registrieren <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </section>
     </>

@@ -6,8 +6,12 @@ import {
   sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  OAuthProvider,
   type Auth,
   type User as FirebaseUser,
+  type UserCredential,
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -41,6 +45,23 @@ export async function loginWithEmail(email: string, password: string) {
   const auth = getFirebaseAuth();
   if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
   return signInWithEmailAndPassword(auth, email, password);
+}
+
+export async function loginWithGoogle(): Promise<UserCredential> {
+  const auth = getFirebaseAuth();
+  if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return signInWithPopup(auth, provider);
+}
+
+export async function loginWithApple(): Promise<UserCredential> {
+  const auth = getFirebaseAuth();
+  if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
+  const provider = new OAuthProvider('apple.com');
+  provider.addScope('email');
+  provider.addScope('name');
+  return signInWithPopup(auth, provider);
 }
 
 export async function registerWithEmail(email: string, password: string) {

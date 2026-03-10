@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@salescareerhub/db';
 import { verifyIdToken } from '@salescareerhub/auth/server';
+import { buildDailySeries, getAnalyticsWindowStart } from '@/lib/analytics';
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,10 +15,26 @@ export async function GET(req: NextRequest) {
       include: { candidateProfile: true },
     });
     if (!user || !user.candidateProfile) {
-      return NextResponse.json({ success: true, stats: { applications: 0, savedJobs: 0, profileViews: 0, notifications: 0 }, applications: [] });
+      return NextResponse.json({
+        success: true,
+        stats: { applications: 0, savedJobs: 0, profileViews: 0, notifications: 0 },
+        analytics: { recentApplications: 0, recentSavedJobs: 0, dailyApplications: [], dailySavedJobs: [] },
+        applications: [],
+      });
     }
 
-    const [applicationCount, savedJobCount, notificationCount, applications] = await Promise.all([
+    const analyticsStart = getAnalyticsWindowStart(7);
+
+    const [
+      applicationCount,
+      savedJobCount,
+      notificationCount,
+      applications,
+      recentApplications,
+      recentSavedJobs,
+      applicationEvents,
+      savedJobEvents,
+    ] = await Promise.all([
       prisma.application.count({ where: { candidateId: user.candidateProfile.id } }),
       prisma.savedJob.count({ where: { userId: user.id } }),
       prisma.notification.count({ where: { userId: user.id, isRead: false } }),
@@ -27,11 +44,27 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: 'desc' },
         take: 5,
       }),
+      prisma.application.count({ where: { candidateId: user.candidateProfile.id, createdAt: { gte: analyticsStart } } }),
+      prisma.savedJob.count({ where: { userId: user.id, createdAt: { gte: analyticsStart } } }),
+      prisma.application.findMany({
+        where: { candidateId: user.candidateProfile.id, createdAt: { gte: analyticsStart } },
+        select: { createdAt: true },
+      }),
+      prisma.savedJob.findMany({
+        where: { userId: user.id, createdAt: { gte: analyticsStart } },
+        select: { createdAt: true },
+      }),
     ]);
 
     return NextResponse.json({
       success: true,
       stats: { applications: applicationCount, savedJobs: savedJobCount, profileViews: 0, notifications: notificationCount },
+      analytics: {
+        recentApplications,
+        recentSavedJobs,
+        dailyApplications: buildDailySeries(applicationEvents, 7),
+        dailySavedJobs: buildDailySeries(savedJobEvents, 7),
+      },
       applications,
     });
   } catch (error) {

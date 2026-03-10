@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { formatRelativeDate } from '@salescareerhub/utils';
 import { getIdToken } from '@salescareerhub/auth/client';
-import { Users, Search, MapPin, Briefcase, Eye, EyeOff } from 'lucide-react';
+import { Search, MapPin, Briefcase, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export default function AdminCandidatesPage() {
   const { dbUser } = useAuth();
@@ -61,6 +61,10 @@ export default function AdminCandidatesPage() {
                     {c.openToWork && <Badge variant="success" className="text-xs">Open to Work</Badge>}
                     {c.seniority && <Badge variant="outline" className="text-xs">{c.seniority}</Badge>}
                     {c.visibleToRecruiters ? <Eye className="h-4 w-4 text-green-600" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
+                    <Link href={`/dashboard/admin/candidates/${c.id}`} className="inline-flex items-center text-xs font-medium text-primary hover:underline">
+                      Details
+                      <ArrowRight className="ml-1 h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
               </CardContent>

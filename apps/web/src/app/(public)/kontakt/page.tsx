@@ -34,8 +34,8 @@ export default function KontaktPage() {
   return (
     <div className="container py-8 max-w-2xl">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2">Kontakt</h1>
-        <p className="text-muted-foreground">Hast du Fragen? Wir freuen uns auf deine Nachricht.</p>
+        <h1 className="text-3xl font-bold mb-2">Gespräch vereinbaren</h1>
+        <p className="text-muted-foreground">Erzählt uns von eurer offenen Rolle oder eurem Karrierewunsch – wir melden uns innerhalb von 24 Stunden.</p>
       </div>
       <Card>
         <CardContent className="pt-6">

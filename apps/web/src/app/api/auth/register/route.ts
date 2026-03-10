@@ -14,13 +14,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { role, displayName } = body;
 
-    if (!['candidate', 'company'].includes(role)) {
-      return NextResponse.json({ success: false, error: 'Ungültige Rolle' }, { status: 400 });
-    }
-
     const existingUser = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
     if (existingUser) {
       return NextResponse.json({ success: true, data: existingUser });
+    }
+
+    if (!['candidate', 'company'].includes(role)) {
+      return NextResponse.json({ success: false, error: 'Ungültige Rolle' }, { status: 400 });
     }
 
     const user = await prisma.user.create({
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
         firebaseUid: decoded.uid,
         email: decoded.email || '',
         role,
-        displayName: displayName || decoded.email?.split('@')[0] || '',
+        displayName: displayName || decoded.name || decoded.email?.split('@')[0] || '',
         isActive: true,
         onboardingCompleted: false,
       },

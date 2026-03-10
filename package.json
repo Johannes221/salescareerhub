@@ -2,12 +2,21 @@
   "name": "salescareerhub",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "turbo dev",
-    "build": "turbo build",
+    "build": "npm run db:generate:render && npm run build:web",
+    "build:all": "turbo build",
+    "build:web": "npm run build --workspace @salescareerhub/web",
     "lint": "turbo lint",
+    "start": "sh -c 'if [ ! -d apps/web/.next ]; then npm run build; fi; npm run start:web'",
+    "start:web": "npm run start --workspace @salescareerhub/web",
     "typecheck": "turbo typecheck",
     "db:generate": "pnpm --filter @salescareerhub/db generate",
+    "db:generate:render": "npm run generate:render --workspace @salescareerhub/db",
     "db:push": "pnpm --filter @salescareerhub/db push",
     "db:seed": "pnpm --filter @salescareerhub/db seed",
     "clean": "turbo clean && rm -rf node_modules"
@@ -22,6 +31,6 @@
   },
   "packageManager": "pnpm@9.4.0",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "20.x"
   }
 }

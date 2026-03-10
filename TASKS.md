@@ -1,6 +1,6 @@
 # SalesCareerHub – Aufgaben & Setup
 
-Stand: 2026-03-10 14:35
+Stand: 2026-03-10 15:25
 
 ---
 
@@ -82,10 +82,6 @@ db.User.updateOne({ email: "deine@email.de" }, { $set: { role: "admin" } })
 
 ### Noch zu bauen
 
-- [ ] Admin: Salary-Insights CRUD (Erstellen, Bearbeiten, Löschen im Admin)
-- [ ] Admin: Rankings automatisch aus Bewertungsdaten generieren
-- [ ] Admin: Kandidaten-Detailansicht (Profil, Bewerbungen, Dokumente, interne Notizen)
-- [ ] Unternehmen-Seite: Suchfilter erweitern (Industrie, Größe, Funding Stage)
 - [ ] Analytics: Dashboard-Widgets mit echten Daten (Views, Clicks pro Tag)
 - [ ] Empty States: Dashboard-Seiten mit passenden Illustrationen aufwerten
 
@@ -151,11 +147,14 @@ db.User.updateOne({ email: "deine@email.de" }, { $set: { role: "admin" } })
 - [x] Nutzerverwaltung (Rolle ändern, deaktivieren)
 - [x] Unternehmen (verifizieren, featured setzen)
 - [x] Kandidaten-Übersicht
+- [x] Kandidaten-Detailansicht (Profil, Bewerbungen, Dokumente, interne Notizen)
 - [x] Jobs (freischalten, ablehnen, featured)
 - [x] Bewerbungs-Pipeline (Status, Fit-Score, Notizen, Weiterleiten)
 - [x] Reviews moderieren
 - [x] Salary Data Übersicht
+- [x] Salary-Insights CRUD (Erstellen, Bearbeiten, Löschen im Admin)
 - [x] Rankings Übersicht
+- [x] Rankings automatisch aus Bewertungsdaten generieren
 - [x] Content verwalten (CRUD)
 - [x] Leads verwalten
 - [x] Audit Logs (DSGVO)
@@ -178,7 +177,7 @@ db.User.updateOne({ email: "deine@email.de" }, { $set: { role: "admin" } })
 - [x] GDPR: /api/gdpr/export, /api/gdpr/delete
 - [x] Candidate: /api/candidate/profile, /api/candidate/dashboard
 - [x] Company: /api/company/profile, /api/company/jobs, /api/company/dashboard
-- [x] Admin: /api/admin/stats, /api/admin/jobs, /api/admin/leads, /api/admin/reviews, /api/admin/content, /api/admin/logs, /api/admin/users, /api/admin/candidates, /api/admin/companies
+- [x] Admin: /api/admin/stats, /api/admin/jobs, /api/admin/leads, /api/admin/reviews, /api/admin/content, /api/admin/logs, /api/admin/users, /api/admin/candidates, /api/admin/candidates/[id], /api/admin/companies, /api/admin/salary, /api/admin/rankings
 
 ### Shared Komponenten & Utilities
 - [x] DashboardSidebar (shared, mobile-responsive)
@@ -191,3 +190,4 @@ db.User.updateOne({ email: "deine@email.de" }, { $set: { role: "admin" } })
 - [x] RBAC Permissions Layer
 - [x] Onboarding-Flow
 - [x] Notification Bell im Header
+- [x] Unternehmen-Seite: Suchfilter erweitert (Industrie, Größe, Funding Stage)

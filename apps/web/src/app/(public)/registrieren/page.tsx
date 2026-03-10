@@ -3,21 +3,43 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { registerWithEmail, getIdToken } from '@salescareerhub/auth/client';
+import { getIdToken, loginWithApple, loginWithGoogle, registerWithEmail } from '@salescareerhub/auth/client';
 import { APP_CONFIG } from '@salescareerhub/config';
-import { UserPlus, AlertCircle, Users, Building2 } from 'lucide-react';
+import { Apple, Building2, Chrome, UserPlus, AlertCircle, Users } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<'candidate' | 'company'>('candidate');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+
+  const syncUser = async (displayName?: string | null) => {
+    const token = await getIdToken();
+    if (!token) throw new Error('Authentifizierung fehlgeschlagen.');
+
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ role, displayName: displayName || undefined }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error || 'Registrierung fehlgeschlagen.');
+    }
+
+    await refreshUser();
+    router.push('/dashboard');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,15 +55,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await registerWithEmail(email, password);
-      const token = await getIdToken();
-      if (token) {
-        await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ role }),
-        });
-      }
-      router.push('/dashboard');
+      await syncUser();
     } catch (err: any) {
       if (err?.code === 'auth/email-already-in-use') {
         setError('Diese E-Mail-Adresse wird bereits verwendet.');
@@ -52,6 +66,27 @@ export default function RegisterPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSocialRegister = async (provider: 'google' | 'apple') => {
+    setError('');
+    setSocialLoading(provider);
+    try {
+      const credential = provider === 'google' ? await loginWithGoogle() : await loginWithApple();
+      await syncUser(credential.user.displayName);
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user') {
+        setError('Anmeldung abgebrochen.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        setError('Diese Domain ist in Firebase Authentication noch nicht freigeschaltet.');
+      } else if (err?.code === 'auth/operation-not-allowed') {
+        setError(`Der ${provider === 'google' ? 'Google' : 'Apple'}-Login ist in Firebase noch nicht aktiviert.`);
+      } else {
+        setError(`${provider === 'google' ? 'Google' : 'Apple'}-Registrierung fehlgeschlagen. Bitte versuche es erneut.`);
+      }
+    } finally {
+      setSocialLoading(null);
     }
   };
 
@@ -112,6 +147,24 @@ export default function RegisterPage() {
               {loading ? 'Wird registriert...' : 'Kostenlos registrieren'}
               {!loading && <UserPlus className="ml-2 h-4 w-4" />}
             </Button>
+            <div className="relative w-full">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">oder mit</span>
+              </div>
+            </div>
+            <div className="grid w-full gap-2">
+              <Button type="button" variant="outline" className="w-full" disabled={socialLoading !== null} onClick={() => handleSocialRegister('google')}>
+                <Chrome className="mr-2 h-4 w-4" />
+                {socialLoading === 'google' ? 'Google wird geöffnet...' : 'Mit Google registrieren'}
+              </Button>
+              <Button type="button" variant="outline" className="w-full" disabled={socialLoading !== null} onClick={() => handleSocialRegister('apple')}>
+                <Apple className="mr-2 h-4 w-4" />
+                {socialLoading === 'apple' ? 'Apple wird geöffnet...' : 'Mit Apple registrieren'}
+              </Button>
+            </div>
             <p className="text-sm text-muted-foreground text-center">
               Bereits ein Konto?{' '}
               <Link href="/login" className="text-primary hover:underline font-medium">Anmelden</Link>

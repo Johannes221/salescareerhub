@@ -1,8 +1,12 @@
+const env = (globalThis as typeof globalThis & {
+  process?: { env?: Record<string, string | undefined> };
+}).process?.env;
+
 export const APP_CONFIG = {
   name: 'SalesCareerHub',
   shortName: 'SCH',
   domain: 'salescareerhub.de',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  url: env?.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   description: 'Die spezialisierte Plattform für Software Sales Karrieren im DACH-Raum',
   tagline: 'Deine Karriere im Software Sales – transparent, spezialisiert, persönlich.',
   locale: 'de-DE',
