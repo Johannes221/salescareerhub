@@ -3,8 +3,8 @@ services:
     name: salescareerhub
     env: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: corepack enable pnpm && pnpm install && pnpm run build
+    startCommand: pnpm start
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
