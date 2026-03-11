@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,10 +17,9 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Sonstiges',
 };
 
-export default function AdminCandidateDetailPage() {
+export default function AdminCandidateDetailPage({ params }: { params: { id: string } }) {
   const { dbUser } = useAuth();
-  const params = useParams();
-  const candidateId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const candidateId = params.id;
   const [candidate, setCandidate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 

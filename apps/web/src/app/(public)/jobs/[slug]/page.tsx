@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,8 @@ import {
   Heart, Send, CheckCircle, AlertCircle, Eye, Users,
 } from 'lucide-react';
 
-export default function JobDetailPage() {
-  const params = useParams();
+export default function JobDetailPage({ params }: { params: { slug: string } }) {
+  const slug = params.slug;
   const router = useRouter();
   const { dbUser } = useAuth();
   const [job, setJob] = useState<any>(null);
@@ -29,17 +29,13 @@ export default function JobDetailPage() {
   const [message, setMessage] = useState('');
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    if (params.slug) fetchJob();
-  }, [params.slug]);
-
-  const fetchJob = async () => {
+  const fetchJob = useCallback(async () => {
     setLoading(true);
     try {
       const headers: Record<string, string> = {};
       const token = await getIdToken();
       if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await fetch(`/api/jobs/${params.slug}`, { headers });
+      const res = await fetch(`/api/jobs/${slug}`, { headers });
       if (res.ok) {
         const data = await res.json();
         setJob(data.data);
@@ -47,7 +43,11 @@ export default function JobDetailPage() {
         setSaved(data.saved || false);
       }
     } catch {} finally { setLoading(false); }
-  };
+  }, [slug]);
+
+  useEffect(() => {
+    if (slug) fetchJob();
+  }, [slug, fetchJob]);
 
   const handleExpressInterest = async () => {
     if (!dbUser) { router.push('/login'); return; }

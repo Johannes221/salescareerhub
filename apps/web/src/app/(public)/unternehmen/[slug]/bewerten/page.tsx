@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,8 @@ import { REVIEW_DIMENSION_LABELS } from '@/lib/config';
 import { getIdToken } from '@/lib/auth/client';
 import { Star, ArrowLeft, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 
-export default function ReviewPage() {
-  const params = useParams();
+export default function ReviewPage({ params }: { params: { slug: string } }) {
+  const slug = params.slug;
   const router = useRouter();
   const { dbUser } = useAuth();
   const [company, setCompany] = useState<any>(null);
@@ -33,14 +33,14 @@ export default function ReviewPage() {
 
   const fetchCompany = useCallback(async () => {
     try {
-      const res = await fetch(`/api/companies/${params.slug}`);
+      const res = await fetch(`/api/companies/${slug}`);
       if (res.ok) { const data = await res.json(); setCompany(data.data); }
     } catch {} finally { setLoading(false); }
-  }, [params.slug]);
+  }, [slug]);
 
   useEffect(() => {
-    if (params.slug) fetchCompany();
-  }, [params.slug, fetchCompany]);
+    if (slug) fetchCompany();
+  }, [slug, fetchCompany]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +79,7 @@ export default function ReviewPage() {
       <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
       <h1 className="text-2xl font-bold mb-2">Bewertung eingereicht!</h1>
       <p className="text-muted-foreground mb-4">Deine Bewertung wird von unserem Team geprüft und innerhalb von 24 Stunden freigeschaltet.</p>
-      <Link href={`/unternehmen/${params.slug}`}><Button>Zurück zum Unternehmen</Button></Link>
+      <Link href={`/unternehmen/${slug}`}><Button>Zurück zum Unternehmen</Button></Link>
     </div>
   );
 
@@ -94,7 +94,7 @@ export default function ReviewPage() {
 
   return (
     <div className="container py-8 max-w-2xl">
-      <Link href={`/unternehmen/${params.slug}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
+      <Link href={`/unternehmen/${slug}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="h-4 w-4 mr-1" /> Zurück zu {company.name}
       </Link>
 
@@ -178,7 +178,7 @@ export default function ReviewPage() {
         </Card>
 
         <div className="flex justify-end gap-4">
-          <Link href={`/unternehmen/${params.slug}`}><Button type="button" variant="outline">Abbrechen</Button></Link>
+          <Link href={`/unternehmen/${slug}`}><Button type="button" variant="outline">Abbrechen</Button></Link>
           <Button type="submit" disabled={submitting || !gdprConsent}>
             {submitting ? 'Wird eingereicht...' : 'Bewertung einreichen'}
           </Button>

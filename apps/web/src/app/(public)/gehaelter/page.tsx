@@ -1,11 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-// Force dynamic rendering to avoid Next.js static generation bug
-export const dynamic = 'force-dynamic';
 import { formatCurrency } from '@/lib/utils';
 import { COUNTRIES, SENIORITY_LABELS } from '@/lib/config';
 import { TrendingUp, BarChart3 } from 'lucide-react';
@@ -15,9 +12,7 @@ export default function GehaelterPage() {
   const [loading, setLoading] = useState(true);
   const [country, setCountry] = useState('');
 
-  useEffect(() => { fetchInsights(); }, [country]);
-
-  const fetchInsights = async () => {
+  const fetchInsights = useCallback(async () => {
     setLoading(true);
     try {
       const params = country ? `?country=${country}` : '';
@@ -25,7 +20,9 @@ export default function GehaelterPage() {
       const data = await res.json();
       setInsights(data.data || []);
     } catch {} finally { setLoading(false); }
-  };
+  }, [country]);
+
+  useEffect(() => { fetchInsights(); }, [fetchInsights]);
 
   return (
     <div className="container py-8">

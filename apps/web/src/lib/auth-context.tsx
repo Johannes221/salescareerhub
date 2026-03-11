@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthChange, logout as firebaseLogout, getIdToken, type FirebaseUser } from '@/lib/auth/client';
+import type { User as FirebaseUser } from 'firebase/auth';
 import type { User } from '@/lib/types';
 
 interface AuthContextType {
@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchDbUser = async () => {
     try {
+      const { getIdToken } = await import('@/lib/auth/client');
       const token = await getIdToken();
       if (!token) {
         setDbUser(null);
@@ -47,19 +48,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (user) => {
-      setFirebaseUser(user);
-      if (user) {
-        await fetchDbUser();
-      } else {
-        setDbUser(null);
-      }
+    let unsubscribe = () => {};
+
+    void import('@/lib/auth/client').then(({ onAuthChange }) => {
+      unsubscribe = onAuthChange(async (user) => {
+        setFirebaseUser(user);
+        if (user) {
+          await fetchDbUser();
+        } else {
+          setDbUser(null);
+        }
+        setLoading(false);
+      });
+    }).catch(() => {
+      setFirebaseUser(null);
+      setDbUser(null);
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
   const logout = async () => {
+    const { logout: firebaseLogout } = await import('@/lib/auth/client');
     await firebaseLogout();
     setDbUser(null);
     setFirebaseUser(null);

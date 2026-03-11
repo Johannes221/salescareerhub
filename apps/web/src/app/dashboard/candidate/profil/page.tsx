@@ -43,7 +43,7 @@ export default function CandidateProfilePage() {
         if (data.data) reset(data.data);
       }
     } catch {} finally { setLoading(false); }
-  }, []);
+  }, [reset]);
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,8 +11,8 @@ import {
   Building2, MapPin, Globe, Users, Shield, Star, Briefcase, ArrowLeft, ExternalLink,
 } from 'lucide-react';
 
-export default function CompanyDetailPage() {
-  const params = useParams();
+export default function CompanyDetailPage({ params }: { params: { slug: string } }) {
+  const slug = params.slug;
   const [company, setCompany] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -22,7 +21,7 @@ export default function CompanyDetailPage() {
   const fetchCompany = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/companies/${params.slug}`);
+      const res = await fetch(`/api/companies/${slug}`);
       if (res.ok) {
         const data = await res.json();
         setCompany(data.data);
@@ -30,9 +29,9 @@ export default function CompanyDetailPage() {
         setReviews(data.reviews || []);
       }
     } catch {} finally { setLoading(false); }
-  }, [params.slug]);
+  }, [slug]);
 
-  useEffect(() => { if (params.slug) fetchCompany(); }, [params.slug, fetchCompany]);
+  useEffect(() => { if (slug) fetchCompany(); }, [slug, fetchCompany]);
 
   if (loading) return <div className="container py-8 max-w-4xl"><div className="h-96 bg-muted animate-pulse rounded-lg" /></div>;
   if (!company) return (

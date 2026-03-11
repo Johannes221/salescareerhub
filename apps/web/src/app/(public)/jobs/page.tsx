@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,17 +20,14 @@ export default function JobsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [sort, setSort] = useState('newest');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const pageSize = 12;
 
-  useEffect(() => {
-    fetchJobs();
-  }, [filters, page, sort]);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (search) params.set('search', search);
+      if (appliedSearch) params.set('search', appliedSearch);
       if (filters.roleCategory) params.set('roleCategory', filters.roleCategory);
       if (filters.country) params.set('country', filters.country);
       if (filters.remoteType) params.set('remoteType', filters.remoteType);
@@ -48,11 +45,19 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [appliedSearch, filters, page, sort]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  useEffect(() => {
+    setAppliedSearch(search);
+  }, [search]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchJobs();
+    setPage(1);
   };
 
   return (

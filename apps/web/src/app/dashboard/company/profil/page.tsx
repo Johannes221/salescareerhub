@@ -36,7 +36,7 @@ export default function CompanyProfilePage() {
       const res = await fetch('/api/company/profile', { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { const data = await res.json(); reset(data.data); }
     } catch {} finally { setLoading(false); }
-  }, []);
+  }, [reset]);
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 

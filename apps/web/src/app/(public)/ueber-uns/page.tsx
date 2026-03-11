@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { APP_CONFIG } from '@/lib/config';
@@ -31,10 +32,12 @@ export default function UeberUnsPage() {
           {/* Photo */}
           <div className="md:col-span-2 flex justify-center">
             <div className="relative w-64 h-80 rounded-2xl overflow-hidden bg-muted shadow-lg">
-              <img
+              <Image
                 src="/images/Johannes1.jpg"
                 alt="Johannes Schartl – Gründer von SalesCareerHub"
-                className="w-full h-full object-cover"
+                fill
+                sizes="256px"
+                className="object-cover"
               />
             </div>
           </div>
