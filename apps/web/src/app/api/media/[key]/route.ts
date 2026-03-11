@@ -2,6 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
+const FOUNDER_PHOTO_BASENAME = 'Johannes1';
+const FOUNDER_PHOTO_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
+const MIME_BY_EXTENSION: Record<(typeof FOUNDER_PHOTO_EXTENSIONS)[number], string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+const EXTENSION_BY_MIME: Record<string, (typeof FOUNDER_PHOTO_EXTENSIONS)[number]> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+function getFounderPhotoFilePath() {
+  const imagesDir = path.join(process.cwd(), 'public', 'images');
+
+  for (const extension of FOUNDER_PHOTO_EXTENSIONS) {
+    const filePath = path.join(imagesDir, `${FOUNDER_PHOTO_BASENAME}.${extension}`);
+    if (fs.existsSync(filePath)) {
+      return { filePath, extension };
+    }
+  }
+
+  return null;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { key: string } }
@@ -9,16 +36,15 @@ export async function GET(
   try {
     const { key } = params;
 
-    // For now, only serve founder-photo from static file
     if (key === 'founder-photo') {
-      const staticImagePath = path.join(process.cwd(), 'public', 'images', 'Johannes1.jpg');
-      
-      if (fs.existsSync(staticImagePath)) {
-        const imageBuffer = fs.readFileSync(staticImagePath);
-        
+      const founderPhoto = getFounderPhotoFilePath();
+
+      if (founderPhoto) {
+        const imageBuffer = fs.readFileSync(founderPhoto.filePath);
+
         return new NextResponse(imageBuffer, {
           headers: {
-            'Content-Type': 'image/jpeg',
+            'Content-Type': MIME_BY_EXTENSION[founderPhoto.extension],
             'Cache-Control': 'public, max-age=31536000, immutable',
           },
         });
@@ -54,21 +80,34 @@ export async function POST(
       );
     }
 
-    // Save to local filesystem
     if (key === 'founder-photo') {
+      const fileExtension = EXTENSION_BY_MIME[file.type];
+
+      if (!fileExtension) {
+        return NextResponse.json(
+          { error: 'Invalid file type' },
+          { status: 400 }
+        );
+      }
+
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      
-      // Ensure the images directory exists
+
       const imagesDir = path.join(process.cwd(), 'public', 'images');
       if (!fs.existsSync(imagesDir)) {
         fs.mkdirSync(imagesDir, { recursive: true });
       }
-      
-      // Save the file
-      const filePath = path.join(imagesDir, 'Johannes1.jpg');
+
+      for (const extension of FOUNDER_PHOTO_EXTENSIONS) {
+        const existingFilePath = path.join(imagesDir, `${FOUNDER_PHOTO_BASENAME}.${extension}`);
+        if (fs.existsSync(existingFilePath)) {
+          fs.unlinkSync(existingFilePath);
+        }
+      }
+
+      const filePath = path.join(imagesDir, `${FOUNDER_PHOTO_BASENAME}.${fileExtension}`);
       fs.writeFileSync(filePath, buffer);
-      
+
       return NextResponse.json({
         success: true,
         message: 'Image saved successfully',
@@ -77,6 +116,7 @@ export async function POST(
           fileName: file.name,
           mimeType: file.type,
           fileSize: file.size,
+          url: '/api/media/founder-photo',
         },
       });
     }

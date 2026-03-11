@@ -33,7 +33,7 @@ export default function UeberUnsPage() {
           <div className="md:col-span-2 flex justify-center">
             <div className="relative w-64 h-80 rounded-2xl overflow-hidden bg-muted shadow-lg">
               <Image
-                src="/images/Johannes1.jpg"
+                src="/api/media/founder-photo"
                 alt="Johannes Schartl – Gründer von SalesCareerHub"
                 fill
                 sizes="256px"
