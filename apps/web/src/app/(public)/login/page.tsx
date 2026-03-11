@@ -45,12 +45,13 @@ export default function LoginPage() {
       await refreshUser();
       router.push('/dashboard');
     } catch (err: any) {
+      console.error('Email login failed:', err);
       if (err?.code === 'auth/invalid-credential') {
         setError('E-Mail oder Passwort ist falsch.');
       } else if (err?.code === 'auth/too-many-requests') {
         setError('Zu viele Anmeldeversuche. Bitte versuche es später erneut.');
       } else {
-        setError('Anmeldung fehlgeschlagen. Bitte versuche es erneut.');
+        setError(typeof err?.message === 'string' ? err.message : 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.');
       }
     } finally {
       setLoading(false);
@@ -64,14 +65,19 @@ export default function LoginPage() {
       const credential = provider === 'google' ? await loginWithGoogle() : await loginWithApple();
       await syncSocialUser(credential.user.displayName);
     } catch (err: any) {
+      console.error(`${provider} login failed:`, err);
       if (err?.code === 'auth/popup-closed-by-user') {
         setError('Anmeldung abgebrochen.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setError('Das Login-Popup wurde blockiert. Bitte erlaube Popups für diese Seite.');
       } else if (err?.code === 'auth/unauthorized-domain') {
         setError('Diese Domain ist in Firebase Authentication noch nicht freigeschaltet.');
       } else if (err?.code === 'auth/operation-not-allowed') {
         setError(`Der ${provider === 'google' ? 'Google' : 'Apple'}-Login ist in Firebase noch nicht aktiviert.`);
+      } else if (err?.code === 'auth/network-request-failed') {
+        setError('Netzwerkfehler bei der Verbindung zu Firebase.');
       } else {
-        setError(`${provider === 'google' ? 'Google' : 'Apple'}-Login fehlgeschlagen. Bitte versuche es erneut.`);
+        setError(typeof err?.message === 'string' ? err.message : `${provider === 'google' ? 'Google' : 'Apple'}-Login fehlgeschlagen. Bitte versuche es erneut.`);
       }
     } finally {
       setSocialLoading(null);
@@ -139,6 +145,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@beispiel.de"
@@ -155,6 +162,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

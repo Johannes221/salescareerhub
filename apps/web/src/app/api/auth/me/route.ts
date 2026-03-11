@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyIdToken } from '@/lib/auth/server';
+import { getFirebaseAdminErrorMessage, verifyIdToken } from '@/lib/auth/server';
 import { prisma } from '@/lib/db';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,11 +17,12 @@ export async function GET(req: NextRequest) {
       where: { firebaseUid: decoded.uid },
       include: { candidateProfile: true, company: true },
     });
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Benutzer nicht gefunden' }, { status: 404 });
-    }
-    return NextResponse.json({ success: true, data: user });
+    return NextResponse.json({ success: true, data: user || null });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'Token ungültig' }, { status: 401 });
+    const adminError = getFirebaseAdminErrorMessage(error);
+    return NextResponse.json(
+      { success: false, error: adminError || 'Token ungültig' },
+      { status: adminError ? 500 : 401 },
+    );
   }
 }

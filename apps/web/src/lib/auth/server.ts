@@ -14,6 +14,7 @@ function getFirebaseAdminConfig(): FirebaseAdminConfig {
   const projectId = sanitizeEnvValue(process.env.FIREBASE_ADMIN_PROJECT_ID);
   const clientEmail = sanitizeEnvValue(process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
   const privateKey = sanitizeEnvValue(process.env.FIREBASE_ADMIN_PRIVATE_KEY)?.replace(/\\n/g, '\n');
+  const publicProjectId = sanitizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 
   const missingKeys = [
     !projectId ? 'FIREBASE_ADMIN_PROJECT_ID' : null,
@@ -23,6 +24,10 @@ function getFirebaseAdminConfig(): FirebaseAdminConfig {
 
   if (missingKeys.length > 0) {
     throw new Error(`Firebase Admin ist nicht vollständig konfiguriert: ${missingKeys.join(', ')}`);
+  }
+
+  if (publicProjectId && projectId && publicProjectId !== projectId) {
+    throw new Error('Firebase Web SDK und Firebase Admin SDK verwenden unterschiedliche Projekte. Bitte prüfe NEXT_PUBLIC_FIREBASE_PROJECT_ID und FIREBASE_ADMIN_PROJECT_ID.');
   }
 
   return {
@@ -45,6 +50,14 @@ export function getFirebaseAdminErrorMessage(error: unknown) {
 
   if (message.includes('credential implementation provided to initializeApp() via the "credential" property failed to fetch a valid Google OAuth2 access token')) {
     return 'Firebase Admin Credentials sind ungültig oder gehören zum falschen Projekt.';
+  }
+
+  if (message.includes('incorrect "aud"') || message.includes('incorrect "iss"')) {
+    return 'Firebase Web SDK und Firebase Admin SDK verwenden unterschiedliche Projekte. Bitte prüfe NEXT_PUBLIC_FIREBASE_* gegen FIREBASE_ADMIN_*.';
+  }
+
+  if (message.includes('Expected an ID token, but was given a custom token')) {
+    return 'Der Server hat kein Firebase ID Token erhalten.';
   }
 
   return null;

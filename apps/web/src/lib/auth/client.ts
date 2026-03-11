@@ -4,6 +4,12 @@ import type { CompanyMemberRole } from '@/lib/config';
 import { getFirebaseClientConfig } from '@/lib/auth/shared';
 
 const firebaseConfig = getFirebaseClientConfig();
+const missingFirebaseConfigKeys = [
+  ['NEXT_PUBLIC_FIREBASE_API_KEY', firebaseConfig.apiKey],
+  ['NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', firebaseConfig.authDomain],
+  ['NEXT_PUBLIC_FIREBASE_PROJECT_ID', firebaseConfig.projectId],
+  ['NEXT_PUBLIC_FIREBASE_APP_ID', firebaseConfig.appId],
+].filter(([, value]) => !value || value === 'your-api-key').map(([key]) => key);
 
 const isConfigured = Boolean(
   firebaseConfig.apiKey &&
@@ -13,6 +19,14 @@ const isConfigured = Boolean(
   firebaseConfig.apiKey !== 'your-api-key' &&
   firebaseConfig.apiKey.length > 5,
 );
+
+function getFirebaseConfigurationError() {
+  if (missingFirebaseConfigKeys.length === 0) {
+    return 'Firebase ist nicht konfiguriert.';
+  }
+
+  return `Firebase ist nicht konfiguriert. Fehlende Konfiguration: ${missingFirebaseConfigKeys.join(', ')}`;
+}
 
 let app: FirebaseApp | null = null;
 
@@ -34,14 +48,14 @@ export async function getFirebaseAuth(): Promise<Auth | null> {
 
 export async function loginWithEmail(email: string, password: string) {
   const auth = await getFirebaseAuth();
-  if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
+  if (!auth) throw new Error(getFirebaseConfigurationError());
   const { signInWithEmailAndPassword } = await import('firebase/auth');
   return signInWithEmailAndPassword(auth, email, password);
 }
 
 export async function loginWithGoogle(): Promise<UserCredential> {
   const auth = await getFirebaseAuth();
-  if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
+  if (!auth) throw new Error(getFirebaseConfigurationError());
   const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -50,7 +64,7 @@ export async function loginWithGoogle(): Promise<UserCredential> {
 
 export async function loginWithApple(): Promise<UserCredential> {
   const auth = await getFirebaseAuth();
-  if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
+  if (!auth) throw new Error(getFirebaseConfigurationError());
   const { OAuthProvider, signInWithPopup } = await import('firebase/auth');
   const provider = new OAuthProvider('apple.com');
   provider.addScope('email');
@@ -60,14 +74,14 @@ export async function loginWithApple(): Promise<UserCredential> {
 
 export async function registerWithEmail(email: string, password: string) {
   const auth = await getFirebaseAuth();
-  if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
+  if (!auth) throw new Error(getFirebaseConfigurationError());
   const { createUserWithEmailAndPassword } = await import('firebase/auth');
   return createUserWithEmailAndPassword(auth, email, password);
 }
 
 export async function resetPassword(email: string) {
   const auth = await getFirebaseAuth();
-  if (!auth) throw new Error('Firebase ist nicht konfiguriert. Bitte .env-Datei mit Firebase-Credentials füllen.');
+  if (!auth) throw new Error(getFirebaseConfigurationError());
   const { sendPasswordResetEmail } = await import('firebase/auth');
   return sendPasswordResetEmail(auth, email);
 }
