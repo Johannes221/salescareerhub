@@ -4,18 +4,61 @@ import { sanitizeEnvValue } from '@/lib/auth/shared';
 
 let adminApp: App;
 
-const env = (globalThis as typeof globalThis & {
-  process?: { env?: Record<string, string | undefined> };
-}).process?.env;
+type FirebaseAdminConfig = {
+  projectId: string;
+  clientEmail: string;
+  privateKey: string;
+};
+
+function getFirebaseAdminConfig(): FirebaseAdminConfig {
+  const projectId = sanitizeEnvValue(process.env.FIREBASE_ADMIN_PROJECT_ID);
+  const clientEmail = sanitizeEnvValue(process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
+  const privateKey = sanitizeEnvValue(process.env.FIREBASE_ADMIN_PRIVATE_KEY)?.replace(/\\n/g, '\n');
+
+  const missingKeys = [
+    !projectId ? 'FIREBASE_ADMIN_PROJECT_ID' : null,
+    !clientEmail ? 'FIREBASE_ADMIN_CLIENT_EMAIL' : null,
+    !privateKey ? 'FIREBASE_ADMIN_PRIVATE_KEY' : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (missingKeys.length > 0) {
+    throw new Error(`Firebase Admin ist nicht vollständig konfiguriert: ${missingKeys.join(', ')}`);
+  }
+
+  return {
+    projectId: projectId!,
+    clientEmail: clientEmail!,
+    privateKey: privateKey!,
+  };
+}
+
+export function getFirebaseAdminErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+
+  if (message.includes('Firebase Admin ist nicht vollständig konfiguriert')) {
+    return message;
+  }
+
+  if (message.includes('Failed to parse private key')) {
+    return 'Firebase Admin Private Key ist ungültig formatiert.';
+  }
+
+  if (message.includes('credential implementation provided to initializeApp() via the "credential" property failed to fetch a valid Google OAuth2 access token')) {
+    return 'Firebase Admin Credentials sind ungültig oder gehören zum falschen Projekt.';
+  }
+
+  return null;
+}
 
 function getAdminApp(): App {
   if (!adminApp) {
     if (getApps().length === 0) {
+      const config = getFirebaseAdminConfig();
       adminApp = initializeApp({
         credential: cert({
-          projectId: sanitizeEnvValue(env?.FIREBASE_ADMIN_PROJECT_ID),
-          clientEmail: sanitizeEnvValue(env?.FIREBASE_ADMIN_CLIENT_EMAIL),
-          privateKey: sanitizeEnvValue(env?.FIREBASE_ADMIN_PRIVATE_KEY)?.replace(/\\n/g, '\n'),
+          projectId: config.projectId,
+          clientEmail: config.clientEmail,
+          privateKey: config.privateKey,
         }),
       });
     } else {
