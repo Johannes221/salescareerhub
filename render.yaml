@@ -4,11 +4,9 @@ services:
     name: salescareerhub
     env: node
     plan: free
-    buildCommand: corepack enable pnpm && pnpm install --frozen-lockfile=false && NODE_OPTIONS="--max-old-space-size=384" pnpm run build
-    startCommand: NODE_OPTIONS="--max-old-space-size=384" pnpm start
+    buildCommand: corepack enable pnpm && pnpm install --frozen-lockfile=false && NODE_OPTIONS="--max-old-space-size=256" pnpm run build
+    startCommand: NODE_OPTIONS="--max-old-space-size=256" pnpm start
     autoDeploy: true
-    # Memory optimization settings
-    healthCheckPath: /
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -34,8 +32,6 @@ services:
         sync: false
       # Memory optimization environment variables
       - key: NODE_OPTIONS
-        value: "--max-old-space-size=384"
+        value: "--max-old-space-size=256"
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
-      - key: NPM_CONFIG_LOGLEVEL
-        value: "error"

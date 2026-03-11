@@ -1,6 +1,9 @@
 import React from 'react';
 import { APP_CONFIG } from '@/lib/config';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export default function DatenschutzPage() {
   return (
     <div className="container py-8 max-w-3xl">

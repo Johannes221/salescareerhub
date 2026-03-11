@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+
+// Force dynamic rendering to avoid Next.js static generation bug
+export const dynamic = 'force-dynamic';
 import { formatCurrency } from '@/lib/utils';
 import { COUNTRIES, SENIORITY_LABELS } from '@/lib/config';
 import { TrendingUp, BarChart3 } from 'lucide-react';

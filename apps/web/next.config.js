@@ -13,42 +13,10 @@ const nextConfig = {
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },
-  // Memory optimization - remove experimental features that cause memory issues
-  swcMinify: true,
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
-  // Disable problematic features for low-memory environments
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-        crypto: false,
-      };
-    }
-    
-    // Reduce memory usage during build
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-        },
-      },
-      // Reduce parallel processing to save memory
-      parallelism: 1,
-    };
-    
-    return config;
-  },
+  // Disable problematic features
+  swcMinify: false,
+  // Use default output - API routes need server-side rendering
+  // output: 'export', // This breaks API routes!
 };
 
 module.exports = nextConfig;

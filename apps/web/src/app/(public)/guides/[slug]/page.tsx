@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,20 +9,23 @@ import { CONTENT_TYPE_LABELS } from '@/lib/config';
 import { formatDate } from '@/lib/utils';
 import { ArrowLeft, BookOpen, User, Calendar } from 'lucide-react';
 
+// Tell Next.js not to statically generate this route
+export const dynamic = 'force-dynamic';
+
 export default function GuideDetailPage() {
   const params = useParams();
   const [post, setPost] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { if (params.slug) fetchPost(); }, [params.slug]);
-
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/content/${params.slug}`);
       if (res.ok) { const data = await res.json(); setPost(data.data); }
     } catch {} finally { setLoading(false); }
-  };
+  }, [params.slug]);
+
+  useEffect(() => { if (params.slug) fetchPost(); }, [params.slug, fetchPost]);
 
   if (loading) return <div className="container py-8 max-w-3xl"><div className="h-96 bg-muted animate-pulse rounded-lg" /></div>;
 
