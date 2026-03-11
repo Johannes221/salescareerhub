@@ -1,5 +1,9 @@
 import { COMPANY_MEMBER_ROLES, ROLES, type CompanyMemberRole, type Role } from '@/lib/config';
 
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 export const AUTH_SESSION_COOKIE = 'sch_session';
 export const ADMIN_EMAILS_ENV_KEY = 'ADMIN_EMAILS';
 
@@ -98,11 +102,11 @@ export function getDisplayNameFallback(email?: string | null, displayName?: stri
 
 export function getFirebaseClientConfig() {
   return {
-    apiKey: sanitizeEnvValue(env?.NEXT_PUBLIC_FIREBASE_API_KEY),
-    authDomain: sanitizeEnvValue(env?.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
-    projectId: sanitizeEnvValue(env?.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
-    storageBucket: sanitizeEnvValue(env?.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
-    messagingSenderId: sanitizeEnvValue(env?.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
-    appId: sanitizeEnvValue(env?.NEXT_PUBLIC_FIREBASE_APP_ID),
+    apiKey: sanitizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
+    authDomain: sanitizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN),
+    projectId: sanitizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
+    storageBucket: sanitizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
+    messagingSenderId: sanitizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
+    appId: sanitizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_APP_ID),
   };
 }
