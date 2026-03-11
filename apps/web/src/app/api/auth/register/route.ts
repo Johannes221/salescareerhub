@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyIdToken } from '@/lib/auth/server';
-import { getAuthUser } from '@/lib/api-auth';
+import { getFirebaseAdminErrorMessage, verifyIdToken } from '@/lib/auth/server';
 import {
   getDisplayNameFallback,
   getProviderFromSignInProvider,
@@ -10,6 +9,9 @@ import {
 } from '@/lib/auth/shared';
 import { ROLES } from '@/lib/config';
 import { prisma } from '@/lib/db';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,31 +64,58 @@ export async function POST(req: NextRequest) {
       onboardingCompleted: existingUser?.onboardingCompleted ?? role === ROLES.ADMIN,
     };
 
-    if (existingUser) {
-      await prisma.user.update({
-        where: { id: existingUser.id },
-        data: baseData,
-      });
-    } else {
-      await prisma.user.create({
-        data: baseData,
-      });
+    const include = {
+      candidateProfile: true,
+      company: true,
+      managedCompany: true,
+    };
 
-      await prisma.auditLog.create({
-        data: {
-          action: 'user_registered',
-          entity: 'User',
-          entityId: decoded.uid,
-          details: JSON.stringify({ email: normalizedEmail, role, authProvider: provider }),
-        },
-      });
+    const userRecord = existingUser
+      ? await prisma.user.update({
+          where: { id: existingUser.id },
+          data: baseData,
+          include,
+        })
+      : await prisma.user.create({
+          data: baseData,
+          include,
+        });
+
+    if (!existingUser) {
+      try {
+        await prisma.auditLog.create({
+          data: {
+            action: 'user_registered',
+            entity: 'User',
+            entityId: decoded.uid,
+            details: JSON.stringify({ email: normalizedEmail, role, authProvider: provider }),
+          },
+        });
+      } catch (auditError) {
+        console.error('Registration audit log error:', auditError);
+      }
     }
 
-    const syncedUser = await getAuthUser(req);
-
-    return NextResponse.json({ success: true, data: syncedUser }, { status: existingUser ? 200 : 201 });
+    return NextResponse.json({ success: true, data: userRecord }, { status: existingUser ? 200 : 201 });
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json({ success: false, error: 'Registrierung fehlgeschlagen' }, { status: 500 });
+    const adminError = getFirebaseAdminErrorMessage(error);
+    const prismaMessage = error instanceof Error ? error.message : null;
+
+    if (adminError) {
+      return NextResponse.json({ success: false, error: adminError }, { status: 500 });
+    }
+
+    if (prismaMessage?.includes('Unknown argument')) {
+      return NextResponse.json(
+        { success: false, error: 'Prisma Client auf dem Server ist veraltet. Render muss neu bauen/deployen.' },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(
+      { success: false, error: prismaMessage || 'Registrierung fehlgeschlagen' },
+      { status: 500 },
+    );
   }
 }
