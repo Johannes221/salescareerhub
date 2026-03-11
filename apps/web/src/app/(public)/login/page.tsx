@@ -7,8 +7,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getIdToken, loginWithApple, loginWithEmail, loginWithGoogle } from '@/lib/auth/client';
-import { APP_CONFIG } from '@/lib/config';
+import { loginWithApple, loginWithEmail, loginWithGoogle, syncCurrentUser } from '@/lib/auth/client';
+import { APP_CONFIG, COMPANY_MEMBER_ROLES, COMPANY_MEMBER_ROLE_LABELS, type CompanyMemberRole } from '@/lib/config';
 import { Apple, Building2, Chrome, LogIn, AlertCircle, Users } from 'lucide-react';
 
 export default function LoginPage() {
@@ -17,28 +17,17 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'candidate' | 'company'>('candidate');
+  const [companyRole, setCompanyRole] = useState<CompanyMemberRole>(COMPANY_MEMBER_ROLES.OWNER);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
 
   const syncSocialUser = async (displayName?: string | null) => {
-    const token = await getIdToken();
-    if (!token) throw new Error('Authentifizierung fehlgeschlagen.');
-
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ role, displayName: displayName || undefined }),
+    await syncCurrentUser({
+      role,
+      companyRole: role === 'company' ? companyRole : undefined,
+      displayName: displayName || undefined,
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      throw new Error(data?.error || 'Benutzer konnte nicht synchronisiert werden.');
-    }
-
     await refreshUser();
     router.push('/dashboard');
   };
@@ -49,6 +38,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginWithEmail(email, password);
+      await syncCurrentUser({
+        role,
+        companyRole: role === 'company' ? companyRole : undefined,
+      });
       await refreshUser();
       router.push('/dashboard');
     } catch (err: any) {
@@ -124,6 +117,23 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+            {role === 'company' && (
+              <div className="space-y-2">
+                <label htmlFor="company-role" className="text-sm font-medium">Unternehmensrolle</label>
+                <select
+                  id="company-role"
+                  value={companyRole}
+                  onChange={(e) => setCompanyRole(e.target.value as CompanyMemberRole)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {Object.values(COMPANY_MEMBER_ROLES).map((value) => (
+                    <option key={value} value={value}>
+                      {COMPANY_MEMBER_ROLE_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">E-Mail</label>
               <Input

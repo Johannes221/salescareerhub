@@ -1,53 +1,150 @@
+import type { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyIdToken } from '@/lib/auth/server';
+import { verifyIdToken, verifySessionCookie } from '@/lib/auth/server';
+import { AUTH_SESSION_COOKIE } from '@/lib/auth/shared';
+import { COMPANY_MEMBER_ROLES, ROLES, type CompanyMemberRole, type Role } from '@/lib/config';
 import { prisma } from '@/lib/db';
-import type { Role } from '@/lib/config';
 
-interface AuthUser {
-  id: string;
-  firebaseUid: string;
-  email: string;
-  role: string;
-  displayName: string | null;
-  isActive: boolean;
-  candidateProfile?: any;
-  company?: any;
+const authUserInclude = {
+  candidateProfile: true,
+  company: true,
+  managedCompany: true,
+} satisfies Prisma.UserInclude;
+
+type BaseAuthUser = Prisma.UserGetPayload<{
+  include: typeof authUserInclude;
+}>;
+
+export type AuthUser = BaseAuthUser & {
+  activeCompany: BaseAuthUser['company'] | BaseAuthUser['managedCompany'] | null;
+  effectiveCompanyRole?: CompanyMemberRole;
+};
+
+function augmentAuthUser(user: BaseAuthUser): AuthUser {
+  const activeCompany = user.company ?? user.managedCompany ?? null;
+  const requestedCompanyRole = user.companyRole as CompanyMemberRole | null;
+
+  return {
+    ...user,
+    activeCompany,
+    effectiveCompanyRole: user.role === ROLES.COMPANY
+      ? user.company
+        ? COMPANY_MEMBER_ROLES.OWNER
+        : requestedCompanyRole ?? COMPANY_MEMBER_ROLES.VIEWER
+      : undefined,
+  };
+}
+
+async function verifyRequest(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
+
+  if (authHeader?.startsWith('Bearer ')) {
+    return verifyIdToken(authHeader.split('Bearer ')[1]);
+  }
+
+  const sessionCookie = req.cookies.get(AUTH_SESSION_COOKIE)?.value;
+
+  if (!sessionCookie) {
+    return null;
+  }
+
+  return verifySessionCookie(sessionCookie);
 }
 
 export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
   try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
+    const decoded = await verifyRequest(req);
+
+    if (!decoded) {
+      return null;
+    }
+
     const user = await prisma.user.findUnique({
       where: { firebaseUid: decoded.uid },
-      include: { candidateProfile: true, company: true },
+      include: authUserInclude,
     });
-    return user as AuthUser | null;
+
+    if (!user?.isActive) {
+      return null;
+    }
+
+    return augmentAuthUser(user);
   } catch {
     return null;
   }
 }
 
+export function hasRole(user: AuthUser, role: Role) {
+  return user.role === role;
+}
+
+export function isCompanyUser(user: AuthUser) {
+  return user.role === ROLES.COMPANY;
+}
+
+export function canAccessCompanyArea(user: AuthUser) {
+  return isCompanyUser(user);
+}
+
+export function canManageCompany(user: AuthUser) {
+  if (!isCompanyUser(user)) {
+    return false;
+  }
+
+  return (
+    user.effectiveCompanyRole === COMPANY_MEMBER_ROLES.OWNER ||
+    user.effectiveCompanyRole === COMPANY_MEMBER_ROLES.MANAGER ||
+    user.effectiveCompanyRole === COMPANY_MEMBER_ROLES.EDITOR
+  );
+}
+
 export async function requireAuth(req: NextRequest): Promise<AuthUser | NextResponse> {
   const user = await getAuthUser(req);
+
   if (!user) {
     return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
   }
+
   return user;
 }
 
 export async function requireRole(req: NextRequest, role: Role): Promise<AuthUser | NextResponse> {
   const result = await requireAuth(req);
-  if (result instanceof NextResponse) return result;
-  if (result.role !== role) {
+
+  if (result instanceof NextResponse) {
+    return result;
+  }
+
+  if (!hasRole(result, role)) {
     return NextResponse.json({ success: false, error: 'Keine Berechtigung' }, { status: 403 });
   }
+
   return result;
 }
 
 export async function requireAdmin(req: NextRequest): Promise<AuthUser | NextResponse> {
-  return requireRole(req, 'admin');
+  return requireRole(req, ROLES.ADMIN);
+}
+
+export async function requireCompanyUser(
+  req: NextRequest,
+  options?: { requireManagedCompany?: boolean; requireWriteAccess?: boolean },
+): Promise<AuthUser | NextResponse> {
+  const result = await requireRole(req, ROLES.COMPANY);
+
+  if (result instanceof NextResponse) {
+    return result;
+  }
+
+  if (options?.requireManagedCompany && !result.activeCompany) {
+    return NextResponse.json({ success: false, error: 'Unternehmen nicht gefunden' }, { status: 404 });
+  }
+
+  if (options?.requireWriteAccess && !canManageCompany(result)) {
+    return NextResponse.json({ success: false, error: 'Keine Berechtigung' }, { status: 403 });
+  }
+
+  return result;
 }
 
 export function isUser(result: AuthUser | NextResponse): result is AuthUser {

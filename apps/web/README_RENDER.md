@@ -24,6 +24,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
 FIREBASE_ADMIN_PROJECT_ID=your-project-id
 FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
 FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+ADMIN_EMAILS=admin@deine-domain.de
 ```
 
 ### App Configuration
@@ -37,8 +38,23 @@ NODE_ENV=production
 
 1. **Firebase Console Settings**:
    - Add your Render URL (`https://your-app-name.onrender.com`) to Authentication → Settings → Authorized domains
-   - Enable Google/Apple sign-in methods if needed
+   - Enable Google sign-in in Authentication → Sign-in method
+   - Enable Apple sign-in in Authentication → Sign-in method
    - Download service account key for Admin SDK
+
+2. **Google Sign-In**:
+   - Add the Render URL to Firebase Authorized Domains
+   - If you use a custom domain, add that domain as well
+
+3. **Apple Sign-In**:
+   - Create an Apple Sign In capability in your Apple Developer account
+   - Register the Firebase redirect URL from the Apple provider setup in Firebase
+   - Add the production Render domain and the final custom domain in Firebase Authorized Domains
+   - Without the Apple Developer configuration, Apple login will not complete in production
+
+4. **Admin Login**:
+   - Set `ADMIN_EMAILS` to a comma-separated list of email addresses
+   - Users with one of these emails are automatically synchronized as `admin`
 
 2. **MongoDB Atlas** (recommended):
    - Create a free cluster

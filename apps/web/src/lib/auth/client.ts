@@ -1,16 +1,18 @@
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth, User as FirebaseUser, UserCredential } from 'firebase/auth';
+import type { CompanyMemberRole } from '@/lib/config';
+import { getFirebaseClientConfig } from '@/lib/auth/shared';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+const firebaseConfig = getFirebaseClientConfig();
 
-const isConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'your-api-key' && firebaseConfig.apiKey.length > 5;
+const isConfigured = Boolean(
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId &&
+  firebaseConfig.apiKey !== 'your-api-key' &&
+  firebaseConfig.apiKey.length > 5,
+);
 
 let app: FirebaseApp | null = null;
 
@@ -71,6 +73,11 @@ export async function resetPassword(email: string) {
 }
 
 export async function logout() {
+  await fetch('/api/auth/session', {
+    method: 'DELETE',
+    credentials: 'include',
+  }).catch(() => undefined);
+
   const auth = await getFirebaseAuth();
   if (!auth) return;
   const { signOut } = await import('firebase/auth');
@@ -99,6 +106,57 @@ export async function getIdToken(): Promise<string | null> {
   const user = auth.currentUser;
   if (!user) return null;
   return user.getIdToken();
+}
+
+export async function establishServerSession(token?: string | null) {
+  const resolvedToken = token ?? await getIdToken();
+
+  if (!resolvedToken) {
+    throw new Error('Authentifizierung fehlgeschlagen.');
+  }
+
+  const response = await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resolvedToken}`,
+    },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error || 'Server-Session konnte nicht erstellt werden.');
+  }
+}
+
+export async function syncCurrentUser(payload?: {
+  role?: 'candidate' | 'company';
+  companyRole?: CompanyMemberRole;
+  displayName?: string | null;
+}) {
+  const token = await getIdToken();
+
+  if (!token) {
+    throw new Error('Authentifizierung fehlgeschlagen.');
+  }
+
+  const response = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload || {}),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error || 'Benutzer konnte nicht synchronisiert werden.');
+  }
+
+  await establishServerSession(token);
+
+  return response.json().catch(() => null);
 }
 
 export type { FirebaseUser };

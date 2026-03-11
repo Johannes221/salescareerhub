@@ -51,10 +51,14 @@ export async function GET(req: NextRequest) {
           createdAt: { gte: analyticsStart },
         },
         select: { createdAt: true },
+        take: 500, // Limit to prevent OOM
+        orderBy: { createdAt: 'desc' },
       }),
       prisma.application.findMany({
         where: { createdAt: { gte: analyticsStart } },
         select: { createdAt: true },
+        take: 500, // Limit to prevent OOM
+        orderBy: { createdAt: 'desc' },
       }),
     ]);
 

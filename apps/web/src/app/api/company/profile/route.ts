@@ -1,31 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { COMPANY_MEMBER_ROLES } from '@/lib/config';
+import { isUser, requireCompanyUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 import { slugify } from '@/lib/utils';
-
-async function getAuthUser(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    return prisma.user.findUnique({ where: { firebaseUid: decoded.uid }, include: { company: true } });
-  } catch { return null; }
-}
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getAuthUser(req);
-    if (!user) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
-    return NextResponse.json({ success: true, data: user.company });
+    const result = await requireCompanyUser(req);
+    if (!isUser(result)) return result;
+    return NextResponse.json({ success: true, data: result.activeCompany });
   } catch { return NextResponse.json({ success: false, error: 'Fehler' }, { status: 500 }); }
 }
 
 export async function PUT(req: NextRequest) {
   try {
-    const user = await getAuthUser(req);
-    if (!user || user.role !== 'company') {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
-    }
+    const result = await requireCompanyUser(req, { requireWriteAccess: true });
+    if (!isUser(result)) return result;
 
     const body = await req.json();
     const { name, website, linkedinUrl, country, city, employeeCount, fundingStage, industry, description, benefits, remotePolicy, salesTeamSize, atsLink } = body;
@@ -33,16 +23,22 @@ export async function PUT(req: NextRequest) {
     const data: any = { name, website, linkedinUrl, country, city, employeeCount, fundingStage, industry, description, benefits: benefits || [], remotePolicy, salesTeamSize, atsLink };
 
     let company;
-    if (user.company) {
-      company = await prisma.company.update({ where: { id: user.company.id }, data });
+    if (result.activeCompany) {
+      company = await prisma.company.update({ where: { id: result.activeCompany.id }, data });
     } else {
       const slug = slugify(name) + '-' + Date.now().toString(36);
-      company = await prisma.company.create({ data: { ...data, slug, userId: user.id, tags: [] } });
-      await prisma.user.update({ where: { id: user.id }, data: { onboardingCompleted: true } });
+      company = await prisma.company.create({ data: { ...data, slug, userId: result.id, tags: [] } });
+      await prisma.user.update({
+        where: { id: result.id },
+        data: {
+          onboardingCompleted: true,
+          companyRole: result.companyRole || COMPANY_MEMBER_ROLES.OWNER,
+        },
+      });
     }
 
     await prisma.auditLog.create({
-      data: { userId: user.id, action: 'company_profile_updated', entity: 'Company', entityId: company.id, details: 'Unternehmensprofil aktualisiert' },
+      data: { userId: result.id, action: 'company_profile_updated', entity: 'Company', entityId: company.id, details: 'Unternehmensprofil aktualisiert' },
     });
 
     return NextResponse.json({ success: true, data: company });

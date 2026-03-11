@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireCompanyUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 import { buildDailySeries, getAnalyticsWindowStart } from '@/lib/analytics';
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
-    }
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: decoded.uid },
-      include: { company: true },
-    });
-    if (!user || !user.company) {
+    const result = await requireCompanyUser(req);
+    if (!isUser(result) || !result.activeCompany) {
       return NextResponse.json({
         success: true,
         stats: { totalJobs: 0, liveJobs: 0, totalApplications: 0, profileViews: 0, jobViews: 0 },
@@ -33,12 +25,12 @@ export async function GET(req: NextRequest) {
 
     const [allJobs, liveJobs, jobs] = await Promise.all([
       prisma.job.findMany({
-        where: { companyId: user.company.id },
+        where: { companyId: result.activeCompany.id },
         select: { id: true, viewCount: true },
       }),
-      prisma.job.count({ where: { companyId: user.company.id, status: 'live' } }),
+      prisma.job.count({ where: { companyId: result.activeCompany.id, status: 'live' } }),
       prisma.job.findMany({
-        where: { companyId: user.company.id },
+        where: { companyId: result.activeCompany.id },
         include: { _count: { select: { applications: true } } },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -56,17 +48,17 @@ export async function GET(req: NextRequest) {
       recentJobViewEvents,
       recentApplicationEvents,
     ] = await Promise.all([
-      prisma.application.count({ where: { job: { companyId: user.company.id } } }),
-      prisma.analyticsEvent.count({ where: { eventType: 'company_profile_viewed', entityId: user.company.id } }),
+      prisma.application.count({ where: { job: { companyId: result.activeCompany.id } } }),
+      prisma.analyticsEvent.count({ where: { eventType: 'company_profile_viewed', entityId: result.activeCompany.id } }),
       jobIds.length > 0
         ? prisma.analyticsEvent.count({
             where: { eventType: 'job_viewed', entityId: { in: jobIds }, createdAt: { gte: analyticsStart } },
           })
         : Promise.resolve(0),
       prisma.analyticsEvent.count({
-        where: { eventType: 'company_profile_viewed', entityId: user.company.id, createdAt: { gte: analyticsStart } },
+        where: { eventType: 'company_profile_viewed', entityId: result.activeCompany.id, createdAt: { gte: analyticsStart } },
       }),
-      prisma.application.count({ where: { job: { companyId: user.company.id }, createdAt: { gte: analyticsStart } } }),
+      prisma.application.count({ where: { job: { companyId: result.activeCompany.id }, createdAt: { gte: analyticsStart } } }),
       jobIds.length > 0
         ? prisma.analyticsEvent.findMany({
             where: { eventType: 'job_viewed', entityId: { in: jobIds }, createdAt: { gte: analyticsStart } },
@@ -74,7 +66,7 @@ export async function GET(req: NextRequest) {
           })
         : Promise.resolve([]),
       prisma.application.findMany({
-        where: { job: { companyId: user.company.id }, createdAt: { gte: analyticsStart } },
+        where: { job: { companyId: result.activeCompany.id }, createdAt: { gte: analyticsStart } },
         select: { createdAt: true },
       }),
     ]);

@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
-
-async function getAuthUser(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    return prisma.user.findUnique({
-      where: { firebaseUid: decoded.uid },
-      include: { candidateProfile: true, company: true },
-    });
-  } catch { return null; }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -111,6 +99,7 @@ export async function GET(req: NextRequest) {
           candidate: { select: { firstName: true, lastName: true, email: true, currentRole: true, seniority: true, skills: true, linkedinUrl: true } },
         },
         orderBy: { createdAt: 'desc' },
+        take: 100, // Limit to prevent OOM
       });
       return NextResponse.json({ success: true, data: applications });
     }
@@ -120,14 +109,15 @@ export async function GET(req: NextRequest) {
         where: { candidateId: user.candidateProfile.id },
         include: { job: { include: { company: { select: { name: true, slug: true, logoUrl: true } } } } },
         orderBy: { createdAt: 'desc' },
+        take: 50, // Limit to prevent OOM
       });
       return NextResponse.json({ success: true, data: applications });
     }
 
-    if (user.role === 'company' && user.company) {
+    if (user.role === 'company' && user.activeCompany) {
       const applications = await prisma.application.findMany({
         where: {
-          job: { companyId: user.company.id },
+          job: { companyId: user.activeCompany.id },
           status: { in: ['forwarded', 'interview_1', 'interview_2', 'offer', 'hired', 'rejected'] },
         },
         include: {
@@ -135,6 +125,7 @@ export async function GET(req: NextRequest) {
           candidate: { select: { firstName: true, lastName: true, currentRole: true, seniority: true } },
         },
         orderBy: { createdAt: 'desc' },
+        take: 100, // Limit to prevent OOM
       });
       return NextResponse.json({ success: true, data: applications });
     }

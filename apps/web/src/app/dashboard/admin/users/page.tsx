@@ -6,16 +6,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ROLE_LABELS } from '@/lib/config';
+import { COMPANY_MEMBER_ROLES, COMPANY_MEMBER_ROLE_LABELS, ROLE_LABELS } from '@/lib/config';
 import { formatRelativeDate } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
 import { Users, Search, Shield, Mail, UserCog, Ban, CheckCircle } from 'lucide-react';
 
 const ROLES = ['admin', 'company', 'candidate', 'recruiter'] as const;
+const COMPANY_ROLES = Object.values(COMPANY_MEMBER_ROLES) as string[];
 
 export default function AdminUsersPage() {
   const { dbUser } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -25,7 +27,11 @@ export default function AdminUsersPage() {
     try {
       const token = await getIdToken();
       const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) { const data = await res.json(); setUsers(data.data || []); }
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.data || []);
+        setCompanies(data.meta?.companies || []);
+      }
     } catch {} finally { setLoading(false); }
   };
 
@@ -89,6 +95,33 @@ export default function AdminUsersPage() {
                     >
                       {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                     </select>
+                    {user.role === 'company' && (
+                      <>
+                        <select
+                          value={user.managedCompanyId || user.company?.id || ''}
+                          onChange={(e) => updateUser(user.id, { managedCompanyId: e.target.value })}
+                          className="h-8 rounded-md border bg-background px-2 text-xs"
+                        >
+                          <option value="">Eigene Company</option>
+                          {companies.map((company) => (
+                            <option key={company.id} value={company.id}>
+                              {company.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={user.companyRole || COMPANY_MEMBER_ROLES.OWNER}
+                          onChange={(e) => updateUser(user.id, { companyRole: e.target.value })}
+                          className="h-8 rounded-md border bg-background px-2 text-xs"
+                        >
+                          {COMPANY_ROLES.map((value) => (
+                            <option key={value} value={value}>
+                              {COMPANY_MEMBER_ROLE_LABELS[value as keyof typeof COMPANY_MEMBER_ROLE_LABELS]}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    )}
                     <Button
                       size="sm" variant="ghost"
                       onClick={() => updateUser(user.id, { isActive: !user.isActive })}

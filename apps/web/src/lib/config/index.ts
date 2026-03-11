@@ -27,11 +27,27 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
+export const COMPANY_MEMBER_ROLES = {
+  OWNER: 'owner',
+  MANAGER: 'manager',
+  EDITOR: 'editor',
+  VIEWER: 'viewer',
+} as const;
+
+export type CompanyMemberRole = (typeof COMPANY_MEMBER_ROLES)[keyof typeof COMPANY_MEMBER_ROLES];
+
 export const ROLE_LABELS: Record<Role, string> = {
   admin: 'Administrator',
   company: 'Unternehmen',
   candidate: 'Kandidat',
   recruiter: 'Recruiter',
+};
+
+export const COMPANY_MEMBER_ROLE_LABELS: Record<CompanyMemberRole, string> = {
+  owner: 'Geschäftsführung',
+  manager: 'Hiring-Verantwortlich',
+  editor: 'Bearbeitung',
+  viewer: 'Lesend',
 };
 
 export const JOB_ROLES = [

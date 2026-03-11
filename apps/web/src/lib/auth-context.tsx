@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       const res = await fetch('/api/auth/me', {
+        credentials: 'include',
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

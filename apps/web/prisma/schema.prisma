@@ -14,7 +14,7 @@ model User {
   email               String    @unique
   role                String    @default("candidate") // admin | company | candidate | recruiter
   managedCompanyId    String?   @db.ObjectId
-  managedCompany      Company?  @relation("CompanyMembers", fields: [managedCompanyId], references: [id])
+  managedCompany      Company?  @relation("CompanyMembers", fields: [managedCompanyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   companyRole         String?
   authProvider        String?
   lastLoginAt         DateTime?

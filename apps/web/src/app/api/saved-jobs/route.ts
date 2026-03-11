@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
-
-async function getAuthUser(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    return prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-  } catch { return null; }
-}
 
 export async function POST(req: NextRequest) {
   try {

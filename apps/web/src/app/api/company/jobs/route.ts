@@ -1,23 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireCompanyUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 import { slugify } from '@/lib/utils';
-
-async function getAuthUser(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    return prisma.user.findUnique({ where: { firebaseUid: decoded.uid }, include: { company: true } });
-  } catch { return null; }
-}
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getAuthUser(req);
-    if (!user || user.role !== 'company' || !user.company) {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
-    }
+    const result = await requireCompanyUser(req, { requireManagedCompany: true, requireWriteAccess: true });
+    if (!isUser(result)) return result;
+    const activeCompany = result.activeCompany;
+    if (!activeCompany) return NextResponse.json({ success: false, error: 'Unternehmen nicht gefunden' }, { status: 404 });
 
     const body = await req.json();
     const {
@@ -30,11 +21,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Pflichtfelder fehlen' }, { status: 400 });
     }
 
-    const slug = slugify(title) + '-' + slugify(user.company.name) + '-' + Date.now().toString(36);
+    const slug = slugify(title) + '-' + slugify(activeCompany.name) + '-' + Date.now().toString(36);
 
     const job = await prisma.job.create({
       data: {
-        companyId: user.company.id,
+        companyId: activeCompany.id,
         title, slug, roleCategory, seniority,
         employmentType: employmentType || 'fulltime',
         location, country, remoteType: remoteType || 'hybrid',
@@ -57,14 +48,14 @@ export async function POST(req: NextRequest) {
         data: {
           userId: admin.id, type: 'new_job_pending',
           title: 'Neuer Job zur Prüfung',
-          message: `${user.company.name} hat "${title}" eingereicht.`,
+          message: `${activeCompany.name} hat "${title}" eingereicht.`,
           link: '/dashboard/admin/jobs',
         },
       });
     }
 
     await prisma.auditLog.create({
-      data: { userId: user.id, action: 'job_created', entity: 'Job', entityId: job.id, details: `Job "${title}" erstellt` },
+      data: { userId: result.id, action: 'job_created', entity: 'Job', entityId: job.id, details: `Job "${title}" erstellt` },
     });
 
     return NextResponse.json({ success: true, data: job }, { status: 201 });
@@ -76,11 +67,13 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getAuthUser(req);
-    if (!user || !user.company) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    const result = await requireCompanyUser(req, { requireManagedCompany: true });
+    if (!isUser(result)) return result;
+    const activeCompany = result.activeCompany;
+    if (!activeCompany) return NextResponse.json({ success: false, error: 'Unternehmen nicht gefunden' }, { status: 404 });
 
     const jobs = await prisma.job.findMany({
-      where: { companyId: user.company.id },
+      where: { companyId: activeCompany.id },
       include: { _count: { select: { applications: true } } },
       orderBy: { createdAt: 'desc' },
     });
