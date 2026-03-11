@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { prisma } from '@/lib/db';
+import { verifyIdToken } from '@/lib/auth/server';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const FOUNDER_PHOTO_URL_SETTING_KEY = 'founder_photo_url';
 const FOUNDER_PHOTO_BASENAME = 'Johannes1';
 const FOUNDER_PHOTO_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
 const MIME_BY_EXTENSION: Record<(typeof FOUNDER_PHOTO_EXTENSIONS)[number], string> = {
@@ -29,6 +36,38 @@ function getFounderPhotoFilePath() {
   return null;
 }
 
+async function getFounderPhotoUrlSetting() {
+  try {
+    const setting = await prisma.adminSetting.findUnique({
+      where: { key: FOUNDER_PHOTO_URL_SETTING_KEY },
+    });
+
+    return setting?.value?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function requireAdminUser(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
+  const user = await prisma.user.findUnique({
+    where: { firebaseUid: decoded.uid },
+    select: { id: true, role: true },
+  });
+
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+
+  return user;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { key: string } }
@@ -37,6 +76,16 @@ export async function GET(
     const { key } = params;
 
     if (key === 'founder-photo') {
+      const configuredUrl = await getFounderPhotoUrlSetting();
+
+      if (configuredUrl && /^https?:\/\//i.test(configuredUrl)) {
+        return NextResponse.redirect(configuredUrl, 307);
+      }
+
+      if (configuredUrl && configuredUrl.startsWith('/')) {
+        return NextResponse.redirect(new URL(configuredUrl, request.url), 307);
+      }
+
       const founderPhoto = getFounderPhotoFilePath();
 
       if (founderPhoto) {
@@ -45,7 +94,8 @@ export async function GET(
         return new NextResponse(imageBuffer, {
           headers: {
             'Content-Type': MIME_BY_EXTENSION[founderPhoto.extension],
-            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Cache-Control': 'no-store, max-age=0',
+            'Content-Disposition': 'inline',
           },
         });
       }
@@ -70,17 +120,56 @@ export async function POST(
 ) {
   try {
     const { key } = params;
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const adminUser = await requireAdminUser(request);
 
-    if (!file) {
+    if (!adminUser) {
       return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
+        { error: 'Nicht autorisiert' },
+        { status: 401 }
       );
     }
 
     if (key === 'founder-photo') {
+      const contentType = request.headers.get('content-type') || '';
+
+      if (contentType.includes('application/json')) {
+        const body = await request.json();
+        const imageUrl = typeof body?.url === 'string' ? body.url.trim() : '';
+
+        if (!imageUrl || !(/^https?:\/\//i.test(imageUrl) || imageUrl.startsWith('/'))) {
+          return NextResponse.json(
+            { error: 'Invalid image URL' },
+            { status: 400 }
+          );
+        }
+
+        await prisma.adminSetting.upsert({
+          where: { key: FOUNDER_PHOTO_URL_SETTING_KEY },
+          update: { value: imageUrl },
+          create: { key: FOUNDER_PHOTO_URL_SETTING_KEY, value: imageUrl },
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: 'Image URL saved successfully',
+          mediaAsset: {
+            key,
+            url: '/api/media/founder-photo',
+            sourceUrl: imageUrl,
+          },
+        });
+      }
+
+      const formData = await request.formData();
+      const file = formData.get('file') as File | null;
+
+      if (!file) {
+        return NextResponse.json(
+          { error: 'No file provided' },
+          { status: 400 }
+        );
+      }
+
       const fileExtension = EXTENSION_BY_MIME[file.type];
 
       if (!fileExtension) {
@@ -108,6 +197,10 @@ export async function POST(
       const filePath = path.join(imagesDir, `${FOUNDER_PHOTO_BASENAME}.${fileExtension}`);
       fs.writeFileSync(filePath, buffer);
 
+      await prisma.adminSetting.deleteMany({
+        where: { key: FOUNDER_PHOTO_URL_SETTING_KEY },
+      });
+
       return NextResponse.json({
         success: true,
         message: 'Image saved successfully',
@@ -117,6 +210,7 @@ export async function POST(
           mimeType: file.type,
           fileSize: file.size,
           url: '/api/media/founder-photo',
+          updatedByUserId: adminUser.id,
         },
       });
     }

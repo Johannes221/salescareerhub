@@ -10,13 +10,35 @@ const nextConfig = {
       return rootEnv.parsed || {};
     } catch { return {}; }
   })(),
+
+  // Standalone output: traces only needed files, dramatically reduces memory footprint
+  output: 'standalone',
+
   images: {
-    domains: ['firebasestorage.googleapis.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+    ],
+    // Limit image sizes to reduce memory usage
+    deviceSizes: [640, 750, 1080],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    minimumCacheTTL: 60,
   },
-  // Disable problematic features
-  swcMinify: false,
-  // Use default output - API routes need server-side rendering
-  // output: 'export', // This breaks API routes!
+
+  // SWC minifier is faster and uses less memory than Terser
+  swcMinify: true,
+
+  // Reduce memory: disable source maps in production
+  productionBrowserSourceMaps: false,
+
+  // Experimental: reduce memory usage
+  experimental: {
+    // Reduce memory usage during builds
+    workerThreads: false,
+    cpus: 1,
+  },
 };
 
 module.exports = nextConfig;

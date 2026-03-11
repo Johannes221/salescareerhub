@@ -314,3 +314,17 @@ model AdminSetting {
   value String
   updatedAt DateTime @updatedAt
 }
+
+// ─── Media Asset ─────────────────────────────────────────────
+model MediaAsset {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique // unique identifier like "founder-photo"
+  fileName    String   // original filename
+  mimeType    String   // image/jpeg, image/png, etc.
+  fileSize    Int      // file size in bytes
+  data        String   // base64 encoded image data
+  alt         String?  // alt text for accessibility
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

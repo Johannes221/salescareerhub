@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { APP_CONFIG } from '@/lib/config';
@@ -11,6 +10,18 @@ import {
 } from 'lucide-react';
 
 export default function UeberUnsPage() {
+  const founderImageCandidates = useMemo(
+    () => [
+      '/api/media/founder-photo',
+      '/images/Johannes1.jpg',
+      '/images/Johannes1.jpeg',
+      '/images/Johannes1.png',
+      '/images/Johannes1.webp',
+    ],
+    []
+  );
+  const [founderImageIndex, setFounderImageIndex] = useState(0);
+
   return (
     <>
       {/* Hero */}
@@ -32,12 +43,19 @@ export default function UeberUnsPage() {
           {/* Photo */}
           <div className="md:col-span-2 flex justify-center">
             <div className="relative w-64 h-80 rounded-2xl overflow-hidden bg-muted shadow-lg">
-              <Image
-                src="/api/media/founder-photo"
+              <img
+                src={founderImageCandidates[founderImageIndex]}
                 alt="Johannes Schartl – Gründer von SalesCareerHub"
-                fill
-                sizes="256px"
-                className="object-cover"
+                className="h-full w-full object-cover"
+                loading="eager"
+                decoding="async"
+                onError={() => {
+                  setFounderImageIndex((currentIndex) => (
+                    currentIndex < founderImageCandidates.length - 1
+                      ? currentIndex + 1
+                      : currentIndex
+                  ));
+                }}
               />
             </div>
           </div>

@@ -4,8 +4,19 @@ services:
     name: salescareerhub
     env: node
     plan: free
-    buildCommand: corepack enable pnpm && pnpm install --frozen-lockfile=false && NODE_OPTIONS="--max-old-space-size=256" pnpm run build
-    startCommand: NODE_OPTIONS="--max-old-space-size=256" pnpm start
+    # Build: install deps, generate Prisma client, build Next.js (standalone output)
+    buildCommand: >-
+      corepack enable pnpm &&
+      pnpm install --frozen-lockfile=false &&
+      cd apps/web && npx prisma generate &&
+      cd ../.. &&
+      NODE_OPTIONS="--max-old-space-size=384" pnpm run build:web
+    # Start: use standalone server directly (no full node_modules needed)
+    startCommand: >-
+      cp -r apps/web/public apps/web/.next/standalone/apps/web/public &&
+      cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static &&
+      cd apps/web/.next/standalone &&
+      NODE_OPTIONS="--max-old-space-size=384" node apps/web/server.js
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
@@ -30,8 +41,9 @@ services:
         sync: false
       - key: NEXT_PUBLIC_APP_URL
         sync: false
-      # Memory optimization environment variables
-      - key: NODE_OPTIONS
-        value: "--max-old-space-size=256"
+      - key: PORT
+        value: "10000"
+      - key: HOSTNAME
+        value: "0.0.0.0"
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"

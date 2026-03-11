@@ -1,3 +1,11 @@
+// DO NOT re-export both client and server from the same barrel file.
+// firebase (~800KB client) and firebase-admin (~100MB server) would both
+// be loaded into every bundle that imports from '@/lib/auth'.
+//
+// Instead, import directly:
+//   Client-side:  import { ... } from '@/lib/auth/client';
+//   Server-side:  import { ... } from '@/lib/auth/server';
+
 export {
   getFirebaseApp,
   getFirebaseAuth,
@@ -11,11 +19,3 @@ export {
   getIdToken,
   type FirebaseUser,
 } from './client';
-
-export {
-  verifyIdToken,
-  getFirebaseUser,
-  createFirebaseUser,
-  deleteFirebaseUser,
-  type DecodedIdToken,
-} from './server';
