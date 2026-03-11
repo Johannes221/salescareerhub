@@ -11,8 +11,8 @@ const nextConfig = {
     } catch { return {}; }
   })(),
 
-  // Standalone output: traces only needed files, dramatically reduces memory footprint
-  output: 'standalone',
+  // Disable standalone output for now due to memory constraints
+  // output: 'standalone',
 
   images: {
     remotePatterns: [

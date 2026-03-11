@@ -11,12 +11,9 @@ services:
       cd apps/web && npx prisma generate &&
       cd ../.. &&
       NODE_OPTIONS="--max-old-space-size=384" pnpm run build:web
-    # Start: use standalone server directly (no full node_modules needed)
+    # Start: use standard Next.js start command
     startCommand: >-
-      cp -r apps/web/public apps/web/.next/standalone/apps/web/public &&
-      cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static &&
-      cd apps/web/.next/standalone &&
-      NODE_OPTIONS="--max-old-space-size=384" node apps/web/server.js
+      cd apps/web && NODE_OPTIONS="--max-old-space-size=384" npm start
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
