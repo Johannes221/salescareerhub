@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { APP_CONFIG } from '@/lib/config';
@@ -32,17 +31,10 @@ export default function UeberUnsPage() {
           {/* Photo */}
           <div className="md:col-span-2 flex justify-center">
             <div className="relative w-64 h-80 rounded-2xl overflow-hidden bg-muted shadow-lg">
-              <Image
-                src="/api/media/founder-photo"
+              <img
+                src="/images/Johannes1.jpg"
                 alt="Johannes Schartl – Gründer von SalesCareerHub"
-                fill
-                className="object-cover"
-                priority
-                onError={(e) => {
-                  // Fallback to static image if database fails
-                  const target = e.target as HTMLImageElement;
-                  target.src = "/images/Johannes1.jpg";
-                }}
+                className="w-full h-full object-cover"
               />
             </div>
           </div>
