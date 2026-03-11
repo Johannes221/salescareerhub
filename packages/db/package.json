@@ -9,7 +9,6 @@
     "generate:render": "prisma generate",
     "push": "dotenv -e ../../.env -- prisma db push",
     "seed": "dotenv -e ../../.env -- tsx src/seed.ts",
-    "upload-founder-image": "dotenv -e ../../.env -- tsx ../../scripts/upload-founder-image.ts",
     "typecheck": "tsc --noEmit",
     "studio": "dotenv -e ../../.env -- prisma studio"
   },

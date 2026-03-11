@@ -2,21 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
 
-/**
- * File Upload API
- * 
- * DSGVO-Hinweis: Hochgeladene Dateien (CV, Dokumente) werden gemäß Art. 6 Abs. 1 lit. a/b DSGVO
- * verarbeitet. Nutzer können ihre Dateien jederzeit über die Einstellungen oder den GDPR-Löschendpoint
- * löschen lassen.
- * 
- * TODO: Integration mit Firebase Storage für die eigentliche Dateispeicherung.
- * Aktuell wird nur der Metadaten-Record in der DB erstellt.
- * Für die Firebase Storage Integration:
- * 1. Firebase Storage im Projekt aktivieren
- * 2. Storage Rules konfigurieren (nur authentifizierte User)
- * 3. Datei per Client-SDK hochladen
- * 4. Download-URL an diese API senden
- */
+// File type validation - moved outside function to avoid recreation
+const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+const MAX_FILE_SIZE_KB = 10 * 1024; // 10MB
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,10 +12,13 @@ export async function POST(req: NextRequest) {
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
     }
+    
     const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
+    
+    // Optimized user query - only select needed fields
     const user = await prisma.user.findUnique({
       where: { firebaseUid: decoded.uid },
-      include: { candidateProfile: true },
+      select: { id: true, candidateProfile: { select: { id: true } } },
     });
 
     if (!user) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
@@ -39,14 +30,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Dateiinformationen fehlen' }, { status: 400 });
     }
 
-    // File size validation (max 10MB)
-    if (fileSizeKb && fileSizeKb > 10 * 1024) {
+    // File size validation
+    if (fileSizeKb && fileSizeKb > MAX_FILE_SIZE_KB) {
       return NextResponse.json({ success: false, error: 'Datei ist zu groß (max. 10 MB)' }, { status: 400 });
     }
 
     // File type validation
-    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-    if (!allowedTypes.includes(fileType)) {
+    if (!ALLOWED_TYPES.includes(fileType)) {
       return NextResponse.json({ success: false, error: 'Dateityp nicht erlaubt' }, { status: 400 });
     }
 
