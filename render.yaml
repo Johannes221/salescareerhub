@@ -11,9 +11,9 @@ services:
       cd apps/web && npx prisma generate &&
       cd ../.. &&
       NODE_OPTIONS="--max-old-space-size=384" pnpm run build:web
-    # Start: use standard Next.js start command
+    # Start: use root package.json start command
     startCommand: >-
-      cd apps/web && NODE_OPTIONS="--max-old-space-size=384" npm start
+      NODE_OPTIONS="--max-old-space-size=384" npm start
     autoDeploy: true
     envVars:
       - key: DATABASE_URL

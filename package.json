@@ -12,7 +12,7 @@
     "build:all": "turbo build",
     "build:web": "npm run build --workspace @salescareerhub/web",
     "lint": "turbo lint",
-    "start": "node apps/web/.next/standalone/apps/web/server.js",
+    "start": "cd apps/web && npm start",
     "start:web": "npm run start --workspace @salescareerhub/web",
     "start:standalone": "cp -r apps/web/public apps/web/.next/standalone/apps/web/public && cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static && node apps/web/.next/standalone/apps/web/server.js",
     "typecheck": "turbo typecheck",
