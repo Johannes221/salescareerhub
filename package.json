@@ -19,6 +19,7 @@
     "db:generate:render": "npm run generate:render --workspace @salescareerhub/db",
     "db:push": "pnpm --filter @salescareerhub/db push",
     "db:seed": "pnpm --filter @salescareerhub/db seed",
+    "upload:founder-image": "pnpm --filter @salescareerhub/db upload-founder-image",
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {

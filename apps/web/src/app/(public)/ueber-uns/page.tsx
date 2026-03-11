@@ -31,18 +31,23 @@ export default function UeberUnsPage() {
           <div className="md:col-span-2 flex justify-center">
             <div className="relative w-64 h-80 rounded-2xl overflow-hidden bg-muted shadow-lg">
               <Image
-                src="/images/Johannes1.jpg"
-                alt="Johan – Gründer von SalesCareerHub"
+                src="/api/media/founder-photo"
+                alt="Johannes Schartl – Gründer von SalesCareerHub"
                 fill
                 className="object-cover"
                 priority
+                onError={(e) => {
+                  // Fallback to static image if database fails
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/images/Johannes1.jpg";
+                }}
               />
             </div>
           </div>
 
           {/* Bio – narrative framing */}
           <div className="md:col-span-3">
-            <h2 className="text-2xl font-bold mb-1">Johan</h2>
+            <h2 className="text-2xl font-bold mb-1">Johannes Schartl</h2>
             <p className="text-primary font-semibold mb-6">Gründer – {APP_CONFIG.name}</p>
 
             <div className="space-y-4 text-muted-foreground leading-relaxed">
