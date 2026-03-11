@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,9 +16,7 @@ export default function AdminJobsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
 
-  useEffect(() => { fetchJobs(); }, [filter]);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
       const token = await getIdToken();
@@ -26,7 +24,9 @@ export default function AdminJobsPage() {
       const res = await fetch(`/api/admin/jobs${params}`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { const data = await res.json(); setJobs(data.data || []); }
     } catch {} finally { setLoading(false); }
-  };
+  }, [filter]);
+
+  useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
   const updateJob = async (jobId: string, updates: Record<string, any>) => {
     try {

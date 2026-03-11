@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -19,9 +19,7 @@ export default function CompanyDetailPage() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { if (params.slug) fetchCompany(); }, [params.slug]);
-
-  const fetchCompany = async () => {
+  const fetchCompany = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/companies/${params.slug}`);
@@ -32,7 +30,9 @@ export default function CompanyDetailPage() {
         setReviews(data.reviews || []);
       }
     } catch {} finally { setLoading(false); }
-  };
+  }, [params.slug]);
+
+  useEffect(() => { if (params.slug) fetchCompany(); }, [params.slug, fetchCompany]);
 
   if (loading) return <div className="container py-8 max-w-4xl"><div className="h-96 bg-muted animate-pulse rounded-lg" /></div>;
   if (!company) return (

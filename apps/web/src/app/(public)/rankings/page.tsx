@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { COUNTRIES } from '@/lib/config';
@@ -11,9 +11,7 @@ export default function RankingsPage() {
   const [loading, setLoading] = useState(true);
   const [country, setCountry] = useState('');
 
-  useEffect(() => { fetchRankings(); }, [country]);
-
-  const fetchRankings = async () => {
+  const fetchRankings = useCallback(async () => {
     setLoading(true);
     try {
       const params = country ? `?country=${country}` : '';
@@ -21,7 +19,9 @@ export default function RankingsPage() {
       const data = await res.json();
       setRankings(data.data || []);
     } catch {} finally { setLoading(false); }
-  };
+  }, [country]);
+
+  useEffect(() => { fetchRankings(); }, [country, fetchRankings]);
 
   return (
     <div className="container py-8">

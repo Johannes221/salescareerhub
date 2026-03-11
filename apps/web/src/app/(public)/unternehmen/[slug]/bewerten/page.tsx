@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -31,16 +31,16 @@ export default function ReviewPage() {
   const [cons, setCons] = useState('');
   const [roleAtCompany, setRoleAtCompany] = useState('');
 
-  useEffect(() => {
-    if (params.slug) fetchCompany();
-  }, [params.slug]);
-
-  const fetchCompany = async () => {
+  const fetchCompany = useCallback(async () => {
     try {
       const res = await fetch(`/api/companies/${params.slug}`);
       if (res.ok) { const data = await res.json(); setCompany(data.data); }
     } catch {} finally { setLoading(false); }
-  };
+  }, [params.slug]);
+
+  useEffect(() => {
+    if (params.slug) fetchCompany();
+  }, [params.slug, fetchCompany]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

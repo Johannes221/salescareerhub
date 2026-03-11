@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,16 +16,16 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
 
-  useEffect(() => { fetchReviews(); }, [filter]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     setLoading(true);
     try {
       const token = await getIdToken();
       const res = await fetch(`/api/admin/reviews?status=${filter}`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { const data = await res.json(); setReviews(data.data || []); }
     } catch {} finally { setLoading(false); }
-  };
+  }, [filter]);
+
+  useEffect(() => { fetchReviews(); }, [fetchReviews]);
 
   const updateReview = async (id: string, status: string) => {
     try {

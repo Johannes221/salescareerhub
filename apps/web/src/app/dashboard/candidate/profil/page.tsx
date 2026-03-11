@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,9 +33,8 @@ export default function CandidateProfilePage() {
   const skills = watch('skills') || [];
   const languages = watch('languages') || [];
 
-  useEffect(() => { fetchProfile(); }, []);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
+    setLoading(true);
     try {
       const token = await getIdToken();
       const res = await fetch('/api/candidate/profile', { headers: { Authorization: `Bearer ${token}` } });
@@ -44,7 +43,9 @@ export default function CandidateProfilePage() {
         if (data.data) reset(data.data);
       }
     } catch {} finally { setLoading(false); }
-  };
+  }, []);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const onSubmit = async (formData: ProfileForm) => {
     setSaving(true); setError(''); setSuccess(false);

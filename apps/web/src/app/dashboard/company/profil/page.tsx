@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { companyProfileSchema } from '@/lib/utils';
@@ -29,15 +29,16 @@ export default function CompanyProfilePage() {
 
   const benefits = watch('benefits') || [];
 
-  useEffect(() => { fetchProfile(); }, []);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
+    setLoading(true);
     try {
       const token = await getIdToken();
       const res = await fetch('/api/company/profile', { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) { const data = await res.json(); if (data.data) reset(data.data); }
+      if (res.ok) { const data = await res.json(); reset(data.data); }
     } catch {} finally { setLoading(false); }
-  };
+  }, []);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const onSubmit = async (formData: CompanyForm) => {
     setSaving(true); setError(''); setSuccess(false);

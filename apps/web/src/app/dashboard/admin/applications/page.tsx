@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,9 +20,7 @@ export default function AdminApplicationsPage() {
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
-  useEffect(() => { fetchApplications(); }, [statusFilter]);
-
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     setLoading(true);
     try {
       const token = await getIdToken();
@@ -30,7 +28,9 @@ export default function AdminApplicationsPage() {
       const res = await fetch(`/api/applications${params}`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { const data = await res.json(); setApplications(data.data || []); }
     } catch {} finally { setLoading(false); }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => { fetchApplications(); }, [statusFilter, fetchApplications]);
 
   const updateApplication = async (id: string) => {
     setSaving(id);
