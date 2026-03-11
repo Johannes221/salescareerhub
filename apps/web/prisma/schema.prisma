@@ -13,6 +13,11 @@ model User {
   firebaseUid         String    @unique
   email               String    @unique
   role                String    @default("candidate") // admin | company | candidate | recruiter
+  managedCompanyId    String?   @db.ObjectId
+  managedCompany      Company?  @relation("CompanyMembers", fields: [managedCompanyId], references: [id])
+  companyRole         String?
+  authProvider        String?
+  lastLoginAt         DateTime?
   displayName         String?
   avatarUrl           String?
   isActive            Boolean   @default(true)
@@ -88,6 +93,7 @@ model Company {
   updatedAt      DateTime  @updatedAt
 
   jobs             Job[]
+  members          User[]            @relation("CompanyMembers")
   reviews          CompanyReview[]
   rankingSnapshots RankingSnapshot[]
   tags             String[]
