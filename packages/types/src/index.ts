@@ -44,6 +44,7 @@ export interface User {
   onboardingCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
+  candidateProfile?: CandidateProfile | null;
 }
 
 // ─── Candidate Profile ──────────────────────────────────────
@@ -57,18 +58,30 @@ export interface CandidateProfile {
   linkedinUrl?: string;
   location?: string;
   country?: Country;
-  remotePreference?: RemoteType;
+  remotePreference?: RemoteType[];
   yearsOfExperience?: number;
   currentRole?: string;
-  targetRole?: JobRole;
+  targetRole?: JobRole | string;
+  desiredJobRoles?: string[];
+  desiredIndustries?: string[];
+  careerGoals?: string[];
+  preferredCompanyTypes?: string[];
   seniority?: SeniorityLevel;
   languages?: string[];
+  languageProficiencies?: Array<{ language: string; level: string }>;
   salaryExpectationBase?: number;
   salaryExpectationOte?: number;
+  salaryExpectationCurrency?: string;
   noticePeriod?: string;
   cvUrl?: string;
+  cvFileName?: string;
+  cvUploadDate?: Date | string;
   shortBio?: string;
   skills?: string[];
+  googlePlaceId?: string;
+  googlePlaceData?: Record<string, unknown>;
+  onboardingStep?: number;
+  onboardingSource?: 'manual' | 'cv';
   visibleToRecruiters: boolean;
   openToWork: boolean;
   createdAt: Date;

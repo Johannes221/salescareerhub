@@ -44,7 +44,7 @@ export const resumeConfig: ResumeConfig = {
   aiProvider: resolveProvider(),
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model: process.env.OPENAI_MODEL || 'gpt-4.1-nano',
   },
   vertex: {
     projectId: process.env.VERTEX_PROJECT_ID,
