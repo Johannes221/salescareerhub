@@ -206,6 +206,17 @@ export default function JobsPage() {
                       <span className="font-medium text-primary">OTE: {formatSalaryRange(job.oteMin, job.oteMax)}</span>
                     )}
                   </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {job.companyStage ? <Badge variant="secondary">{job.companyStage}</Badge> : null}
+                    {job.industry ? <Badge variant="secondary">{job.industry}</Badge> : null}
+                    {job.salesMotion ? <Badge variant="secondary">{job.salesMotion}</Badge> : null}
+                    {job.averageDealSize ? <Badge variant="outline">Deal Size: {formatSalaryRange(job.averageDealSize, job.averageDealSize)}</Badge> : null}
+                  </div>
+                  <div className="mt-4">
+                    <Button variant="outline" size="sm">
+                      Anonymisierte Stelle ansehen
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </Link>

@@ -85,6 +85,21 @@ export function getCandidateApplicationStage(status?: string | null) {
   }
 }
 
+export function getCandidateApplicationStageVariant(status?: string | null): string {
+  switch (getCandidateApplicationStage(status)) {
+    case 'Screening':
+      return 'warning';
+    case 'Intro Sent':
+      return 'secondary';
+    case 'Rejected':
+      return 'destructive';
+    case 'Hired':
+      return 'success';
+    default:
+      return 'outline';
+  }
+}
+
 export function getPublicCompanyLabel(input?: {
   anonymizedCompanyProfile?: string | null;
   industry?: string | null;
@@ -107,6 +122,36 @@ export function getPublicCompanyLabel(input?: {
   }
 
   return 'Vertrauliches B2B SaaS Unternehmen';
+}
+
+export function serializeCsv(rows: Array<Record<string, unknown>>) {
+  if (rows.length === 0) {
+    return '';
+  }
+
+  const headers = Array.from(
+    rows.reduce((set, row) => {
+      Object.keys(row).forEach((key) => set.add(key));
+      return set;
+    }, new Set<string>()),
+  );
+
+  const escapeValue = (value: unknown) => {
+    if (value === null || value === undefined) return '""';
+
+    const normalized = Array.isArray(value)
+      ? value.join(', ')
+      : typeof value === 'object'
+        ? JSON.stringify(value)
+        : String(value);
+
+    return `"${normalized.replace(/"/g, '""')}"`;
+  };
+
+  return [
+    headers.map(escapeValue).join(','),
+    ...rows.map((row) => headers.map((header) => escapeValue(row[header])).join(',')),
+  ].join('\n');
 }
 
 // ─── Slugify ─────────────────────────────────────────────────

@@ -16,6 +16,8 @@ export default function AdminApplicationsPage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
+  const [search, setSearch] = useState('');
+  const [jobFilter, setJobFilter] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -24,13 +26,33 @@ export default function AdminApplicationsPage() {
     setLoading(true);
     try {
       const token = await getIdToken();
-      const params = statusFilter ? `?status=${statusFilter}` : '';
-      const res = await fetch(`/api/applications${params}`, { headers: { Authorization: `Bearer ${token}` } });
+      const params = new URLSearchParams();
+      if (statusFilter) params.set('status', statusFilter);
+      if (search) params.set('search', search);
+      if (jobFilter) params.set('jobId', jobFilter);
+      const res = await fetch(`/api/applications?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) { const data = await res.json(); setApplications(data.data || []); }
     } catch {} finally { setLoading(false); }
-  }, [statusFilter]);
+  }, [statusFilter, search, jobFilter]);
 
-  useEffect(() => { fetchApplications(); }, [statusFilter, fetchApplications]);
+  useEffect(() => { fetchApplications(); }, [fetchApplications]);
+
+  const exportApplications = async () => {
+    const token = await getIdToken();
+    const params = new URLSearchParams({ format: 'csv' });
+    if (statusFilter) params.set('status', statusFilter);
+    if (search) params.set('search', search);
+    if (jobFilter) params.set('jobId', jobFilter);
+    const res = await fetch(`/api/applications?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+    const csv = await res.text();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'applications.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const updateApplication = async (id: string) => {
     setSaving(id);
@@ -69,6 +91,22 @@ export default function AdminApplicationsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Bewerbungs-Pipeline</h1>
         <p className="text-muted-foreground">Kandidaten screenen, bewerten und weiterleiten</p>
+      </div>
+
+      <div className="mb-6 grid gap-3 md:grid-cols-[1fr_220px_auto]">
+        <Input
+          value={search}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+          placeholder="Kandidat oder Job suchen..."
+        />
+        <Input
+          value={jobFilter}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setJobFilter(e.target.value)}
+          placeholder="Job-ID filtern"
+        />
+        <Button variant="outline" onClick={exportApplications}>
+          Export CSV
+        </Button>
       </div>
 
       {/* Status Filter */}

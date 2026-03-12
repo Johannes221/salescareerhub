@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,21 +39,14 @@ export default function CandidateDocumentsPage() {
 
     setUploading(true);
     try {
-      // TODO: Upload to Firebase Storage first, get URL
-      // For now, create a placeholder URL
-      const fileUrl = `https://storage.placeholder.com/${Date.now()}-${file.name}`;
-
       const token = await getIdToken();
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('category', 'cv');
       const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileUrl,
-          fileType: file.type,
-          fileSizeKb: Math.round(file.size / 1024),
-          category: 'cv',
-        }),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
 
       if (res.ok) {
@@ -137,7 +131,13 @@ export default function CandidateDocumentsPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <FileText className="h-8 w-8 text-muted-foreground shrink-0" />
                     <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{doc.fileName}</p>
+                      {doc.fileUrl ? (
+                        <Link href={doc.fileUrl} target="_blank" className="font-medium text-sm truncate hover:text-primary">
+                          {doc.fileName}
+                        </Link>
+                      ) : (
+                        <p className="font-medium text-sm truncate">{doc.fileName}</p>
+                      )}
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[doc.category] || doc.category}</Badge>
                         <span>{doc.fileSizeKb ? `${Math.round(doc.fileSizeKb / 1024 * 10) / 10} MB` : ''}</span>

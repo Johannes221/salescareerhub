@@ -44,3 +44,9 @@ services:
         value: "0.0.0.0"
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+      - key: AI_PROVIDER
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false

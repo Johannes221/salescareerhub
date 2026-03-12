@@ -8,10 +8,11 @@ import { APP_CONFIG } from '@/lib/config';
 import { Bell, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
 
 const publicNav = [
-  { href: '/fuer-unternehmen', label: 'Für Unternehmen' },
-  { href: '/fuer-kandidaten', label: 'Für Kandidaten' },
-  { href: '/ueber-uns', label: 'Über uns' },
   { href: '/jobs', label: 'Jobs' },
+  { href: '/gehaelter', label: 'Markt-Insights' },
+  { href: '/fuer-kandidaten', label: 'Für Kandidaten' },
+  { href: '/fuer-unternehmen', label: 'Für Unternehmen' },
+  { href: '/ueber-uns', label: 'Über uns' },
   { href: '/kontakt', label: 'Kontakt' },
 ];
 

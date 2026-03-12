@@ -4,7 +4,7 @@ import { getAuthUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
 import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
 import { uploadCandidateDocument } from '@/lib/storage/candidate-documents';
-import { applicationSubmissionSchema, deriveSeniorityFromYears } from '@/lib/utils';
+import { applicationSubmissionSchema, deriveSeniorityFromYears, serializeCsv } from '@/lib/utils';
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_CV_TYPES = ['application/pdf'];
@@ -273,8 +273,20 @@ export async function GET(req: NextRequest) {
     if (user.role === 'admin') {
       const { searchParams } = new URL(req.url);
       const status = searchParams.get('status') || '';
+      const search = searchParams.get('search') || '';
+      const jobId = searchParams.get('jobId') || '';
+      const format = searchParams.get('format') || '';
       const where: any = {};
       if (status) where.status = status;
+      if (jobId) where.jobId = jobId;
+      if (search) {
+        where.OR = [
+          { candidate: { firstName: { contains: search, mode: 'insensitive' } } },
+          { candidate: { lastName: { contains: search, mode: 'insensitive' } } },
+          { candidate: { email: { contains: search, mode: 'insensitive' } } },
+          { job: { title: { contains: search, mode: 'insensitive' } } },
+        ];
+      }
 
       const applications = await prisma.application.findMany({
         where,
@@ -283,8 +295,38 @@ export async function GET(req: NextRequest) {
           candidate: { select: { firstName: true, lastName: true, email: true, currentRole: true, seniority: true, skills: true, linkedinUrl: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: 100, // Limit to prevent OOM
+        take: format === 'csv' ? 500 : 100,
       });
+
+      if (format === 'csv') {
+        const csv = serializeCsv(applications.map((application) => ({
+          id: application.id,
+          candidateName: `${application.candidate?.firstName || ''} ${application.candidate?.lastName || ''}`.trim(),
+          candidateEmail: application.candidate?.email,
+          currentRole: application.candidate?.currentRole,
+          seniority: application.candidate?.seniority,
+          jobTitle: application.job?.title,
+          companyName: application.job?.company?.name,
+          status: application.status,
+          fitScore: application.fitScore,
+          recommendedByAdmin: application.recommendedByAdmin,
+          averageDealSize: application.averageDealSize,
+          averageSalesCycle: application.averageSalesCycle,
+          quotaTarget: application.quotaTarget,
+          quotaAttainment: application.quotaAttainment,
+          largestDealClosed: application.largestDealClosed,
+          territoryType: application.territoryType,
+          createdAt: application.createdAt.toISOString(),
+        })));
+
+        return new NextResponse(csv, {
+          headers: {
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': 'attachment; filename=\"applications.csv\"',
+          },
+        });
+      }
+
       return NextResponse.json({ success: true, data: applications });
     }
 

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { COUNTRIES } from '@/lib/config';
 import { Trophy, Star, Building2, Shield, TrendingUp } from 'lucide-react';
 
@@ -26,8 +25,8 @@ export default function RankingsPage() {
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Unternehmens-Rankings</h1>
-        <p className="text-muted-foreground">Die bestbewerteten Software Sales Organisationen im DACH-Raum</p>
+        <h1 className="text-3xl font-bold mb-2">Sales Market Insights</h1>
+        <p className="text-muted-foreground">Aggregierte Marktstimmung aus verifizierten Software-Sales-Bewertungen im DACH-Raum</p>
       </div>
       <div className="flex gap-2 mb-6">
         <button onClick={() => setCountry('')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${!country ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}>Alle</button>
@@ -57,10 +56,10 @@ export default function RankingsPage() {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold truncate">{r.company?.name || 'Unternehmen'}</h3>
-                      {r.isVerified && <Shield className="h-4 w-4 text-primary shrink-0" />}
+                      <h3 className="font-semibold truncate">{r.company?.name || 'Anonymisierte Sales-Organisation'}</h3>
+                      {r.company?.isVerified && <Shield className="h-4 w-4 text-primary shrink-0" />}
                     </div>
-                    <p className="text-sm text-muted-foreground">{r.country} · {r.reviewCount} Bewertungen</p>
+                    <p className="text-sm text-muted-foreground">{r.company?.industry || 'B2B SaaS'} · {r.country} · {r.reviewCount} Bewertungen</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6 shrink-0">
