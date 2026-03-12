@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
 import { buildApplicationJourney, computeCandidateJobMatch } from '@/lib/candidate-journey';
 import { prisma } from '@/lib/db';
+import { validateFile } from '@/lib/gdpr';
 import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
 import { uploadCandidateDocument } from '@/lib/storage/candidate-documents';
 import { applicationSubmissionSchema, deriveSeniorityFromYears, serializeCsv } from '@/lib/utils';
@@ -48,6 +49,36 @@ function getStringArray(formData: FormData, key: string) {
       .getAll(key)
       .map((value) => (typeof value === 'string' ? value : '')),
   );
+}
+
+function getFileEntries(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+async function storeCandidateDocument(params: {
+  candidateId: string;
+  category: string;
+  file: File;
+}) {
+  const { candidateId, category, file } = params;
+  const uploaded = await uploadCandidateDocument({
+    candidateId,
+    category,
+    file,
+  });
+
+  return prisma.document.create({
+    data: {
+      candidateId,
+      fileName: uploaded.fileName,
+      fileUrl: uploaded.fileUrl,
+      fileType: uploaded.fileType,
+      fileSizeKb: uploaded.fileSizeKb,
+      category,
+    },
+  });
 }
 
 async function ensureCandidateProfile(user: NonNullable<Awaited<ReturnType<typeof getAuthUser>>>) {
@@ -141,13 +172,27 @@ export async function POST(req: NextRequest) {
     }
 
     const cvFile = formData.get('cv');
-    if (cvFile instanceof File && cvFile.size > 0) {
-      if (cvFile.size > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json({ success: false, error: 'CV ist zu groß (max. 10 MB)' }, { status: 400 });
-      }
+    const coverLetterFile = formData.get('coverLetter');
+    const additionalDocuments = getFileEntries(formData, 'additionalDocuments');
 
-      if (!ALLOWED_CV_TYPES.includes(cvFile.type)) {
-        return NextResponse.json({ success: false, error: 'CV muss als PDF hochgeladen werden' }, { status: 400 });
+    if (cvFile instanceof File && cvFile.size > 0) {
+      const validation = validateFile(cvFile, 'CV');
+      if (!validation.valid) {
+        return NextResponse.json({ success: false, error: validation.error || 'CV konnte nicht geprüft werden' }, { status: 400 });
+      }
+    }
+
+    if (coverLetterFile instanceof File && coverLetterFile.size > 0) {
+      const validation = validateFile(coverLetterFile, 'COVER_LETTER');
+      if (!validation.valid) {
+        return NextResponse.json({ success: false, error: validation.error || 'Anschreiben konnte nicht geprüft werden' }, { status: 400 });
+      }
+    }
+
+    for (const file of additionalDocuments) {
+      const validation = validateFile(file, 'OTHER');
+      if (!validation.valid) {
+        return NextResponse.json({ success: false, error: validation.error || `Dokument ${file.name} ist ungültig` }, { status: 400 });
       }
     }
 
@@ -160,22 +205,29 @@ export async function POST(req: NextRequest) {
       | null = null;
 
     if (cvFile instanceof File && cvFile.size > 0) {
-      const uploaded = await uploadCandidateDocument({
+      cvDocument = await storeCandidateDocument({
         candidateId: candidateProfile.id,
         category: 'cv',
         file: cvFile,
       });
+    }
 
-      cvDocument = await prisma.document.create({
-        data: {
-          candidateId: candidateProfile.id,
-          fileName: uploaded.fileName,
-          fileUrl: uploaded.fileUrl,
-          fileType: uploaded.fileType,
-          fileSizeKb: uploaded.fileSizeKb,
-          category: 'cv',
-        },
+    if (coverLetterFile instanceof File && coverLetterFile.size > 0) {
+      await storeCandidateDocument({
+        candidateId: candidateProfile.id,
+        category: 'cover_letter',
+        file: coverLetterFile,
       });
+    }
+
+    if (additionalDocuments.length > 0) {
+      await Promise.all(
+        additionalDocuments.map((file) => storeCandidateDocument({
+          candidateId: candidateProfile.id,
+          category: 'other',
+          file,
+        })),
+      );
     }
 
     const yearsValue = yearsOfSalesExperience ?? existingProfile.yearsOfExperience ?? undefined;

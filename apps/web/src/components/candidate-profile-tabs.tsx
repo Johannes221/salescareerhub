@@ -19,8 +19,27 @@ import {
   SALES_SKILL_SUGGESTIONS,
   SENIORITY_LABELS,
 } from '@/lib/config';
-import { deriveSeniorityFromYears, formatCurrency } from '@/lib/utils';
-import { FileText, Globe, PencilLine, Shield, Target, TrendingUp, Upload, User, X } from 'lucide-react';
+import { cn, deriveSeniorityFromYears, formatCurrency } from '@/lib/utils';
+import {
+  BriefcaseBusiness,
+  Eye,
+  FileText,
+  Globe,
+  Languages,
+  Linkedin,
+  Mail,
+  MapPin,
+  PencilLine,
+  Phone,
+  Shield,
+  ShieldCheck,
+  Target,
+  TrendingUp,
+  Upload,
+  User,
+  Wallet,
+  X,
+} from 'lucide-react';
 
 type ProfileRecord = Record<string, unknown>;
 type TabKey = 'personal' | 'career' | 'sales' | 'documents' | 'preferences' | 'privacy';
@@ -89,13 +108,13 @@ type EditableProfile = {
   industriesExperience: string[];
 };
 
-const TABS: Array<{ key: TabKey; label: string; icon: React.ElementType }> = [
-  { key: 'personal', label: 'Persönliche Daten', icon: User },
-  { key: 'career', label: 'Karriereziele', icon: Target },
-  { key: 'sales', label: 'Saleserfahrung', icon: TrendingUp },
-  { key: 'documents', label: 'Dokumente', icon: FileText },
-  { key: 'preferences', label: 'Präferenzen', icon: Globe },
-  { key: 'privacy', label: 'Datenschutz', icon: Shield },
+const TABS: Array<{ key: TabKey; label: string; description: string; icon: React.ElementType }> = [
+  { key: 'personal', label: 'Persönliche Daten', description: 'Kontakt, Name und Standort', icon: User },
+  { key: 'career', label: 'Karriereziele', description: 'Rolle, OTE und Zielprofil', icon: Target },
+  { key: 'sales', label: 'Saleserfahrung', description: 'Track Record und Kennzahlen', icon: TrendingUp },
+  { key: 'documents', label: 'Dokumente', description: 'CV und Unterlagen', icon: FileText },
+  { key: 'preferences', label: 'Präferenzen', description: 'Skills, Sprachen, Wunschumfeld', icon: Globe },
+  { key: 'privacy', label: 'Datenschutz', description: 'Sichtbarkeit und Freigaben', icon: Shield },
 ];
 
 const LOCATION_PREFERENCE_OPTIONS = [
@@ -108,6 +127,8 @@ const LOCATION_PREFERENCE_OPTIONS = [
 
 const DEAL_SIZE_OPTIONS = ['< 10k €', '10k - 50k €', '50k - 100k €', '100k - 500k €', '500k+ €'] as const;
 const SALES_CYCLE_OPTIONS = ['< 1 Monat', '1-3 Monate', '3-6 Monate', '6-12 Monate', '12+ Monate'] as const;
+const SELECT_CLASSES = 'flex h-11 w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-ring/20';
+const TEXTAREA_CLASSES = 'min-h-[120px] w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm shadow-sm transition placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20';
 
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -340,23 +361,42 @@ export function CandidateProfileTabs({
   };
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+    <div className="space-y-6">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
+          const isEditingThisTab = editingTab === tab.key;
 
           return (
             <button
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-left text-sm transition ${
-                isActive ? 'border-primary bg-primary/5 text-primary' : 'bg-background hover:bg-accent/40'
-              }`}
+              className={cn(
+                'group rounded-2xl border p-4 text-left transition-all',
+                isActive
+                  ? 'border-primary/40 bg-primary/[0.06] shadow-sm ring-1 ring-primary/10'
+                  : 'bg-background/80 hover:border-primary/20 hover:bg-accent/30',
+              )}
             >
-              <Icon className="h-4 w-4" />
-              <span className="font-medium">{tab.label}</span>
+              <div className="flex items-start gap-3">
+                <div className={cn(
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border',
+                  isActive ? 'border-primary/20 bg-primary/10 text-primary' : 'border-border bg-muted/40 text-muted-foreground',
+                )}>
+                  <Icon className="h-4.5 w-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={cn('text-sm font-semibold', isActive ? 'text-foreground' : 'text-foreground/90')}>{tab.label}</span>
+                    {isEditingThisTab ? (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Bearbeitung</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{tab.description}</p>
+                </div>
+              </div>
             </button>
           );
         })}
@@ -365,7 +405,7 @@ export function CandidateProfileTabs({
       {activeTab === 'personal' && (
         <SectionShell
           title="Persönliche Daten"
-          description="Name, Kontakt und Standort."
+          description="Kontaktdaten, Name und Standort für dein Profil."
           editing={editingTab === 'personal'}
           saving={saving}
           error={error}
@@ -375,26 +415,42 @@ export function CandidateProfileTabs({
         >
           {editingTab === 'personal' ? (
             <div className="grid gap-4 md:grid-cols-2">
-              <Input value={draft.firstName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('firstName', e.target.value)} placeholder="Vorname" />
-              <Input value={draft.lastName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('lastName', e.target.value)} placeholder="Nachname" />
-              <Input value={draft.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('email', e.target.value)} placeholder="E-Mail" className="md:col-span-2" />
-              <Input value={draft.phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('phone', e.target.value)} placeholder="Telefon" />
-              <Input value={draft.linkedinUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('linkedinUrl', e.target.value)} placeholder="LinkedIn URL" />
-              <Input value={draft.location} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('location', e.target.value)} placeholder="Standort" />
-              <select value={draft.country} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('country', e.target.value)} className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm">
-                {COUNTRIES.map((country) => (
-                  <option key={country} value={country}>{country}</option>
-                ))}
-              </select>
+              <FormField label="Vorname" icon={User}>
+                <Input value={draft.firstName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('firstName', e.target.value)} placeholder="z. B. Johannes" className="h-11 rounded-xl" />
+              </FormField>
+              <FormField label="Nachname" icon={User}>
+                <Input value={draft.lastName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('lastName', e.target.value)} placeholder="z. B. Schartl" className="h-11 rounded-xl" />
+              </FormField>
+              <FormField label="E-Mail-Adresse" icon={Mail} className="md:col-span-2">
+                <Input value={draft.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('email', e.target.value)} placeholder="name@beispiel.de" className="h-11 rounded-xl" />
+              </FormField>
+              <FormField label="Telefonnummer" icon={Phone}>
+                <Input value={draft.phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('phone', e.target.value)} placeholder="+49 ..." className="h-11 rounded-xl" />
+              </FormField>
+              <FormField label="LinkedIn Profil" icon={Linkedin}>
+                <Input value={draft.linkedinUrl} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('linkedinUrl', e.target.value)} placeholder="https://linkedin.com/in/..." className="h-11 rounded-xl" />
+              </FormField>
+              <FormField label="Standort" icon={MapPin}>
+                <Input value={draft.location} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('location', e.target.value)} placeholder="Stadt oder Region" className="h-11 rounded-xl" />
+              </FormField>
+              <FormField label="Land" icon={MapPin}>
+                <select value={draft.country} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('country', e.target.value)} className={SELECT_CLASSES}>
+                  {COUNTRIES.map((country: string) => (
+                    <option key={country} value={country}>{country}</option>
+                  ))}
+                </select>
+              </FormField>
             </div>
           ) : (
             <SummaryGrid
               items={[
-                { label: 'Name', value: [normalizedProfile.firstName, normalizedProfile.lastName].filter(Boolean).join(' ') },
-                { label: 'E-Mail', value: normalizedProfile.email },
-                { label: 'Telefon', value: normalizedProfile.phone || '–' },
-                { label: 'LinkedIn', value: normalizedProfile.linkedinUrl || 'Nicht hinterlegt' },
-                { label: 'Standort', value: [normalizedProfile.location, normalizedProfile.country].filter(Boolean).join(', ') },
+                { label: 'Vorname', value: normalizedProfile.firstName || '–', icon: User },
+                { label: 'Nachname', value: normalizedProfile.lastName || '–', icon: User },
+                { label: 'E-Mail-Adresse', value: normalizedProfile.email || '–', icon: Mail },
+                { label: 'Telefonnummer', value: normalizedProfile.phone || 'Nicht hinterlegt', icon: Phone },
+                { label: 'LinkedIn Profil', value: normalizedProfile.linkedinUrl || 'Nicht hinterlegt', icon: Linkedin },
+                { label: 'Standort', value: normalizedProfile.location || 'Nicht hinterlegt', icon: MapPin },
+                { label: 'Land', value: normalizedProfile.country || '–', icon: MapPin },
               ]}
             />
           )}
@@ -404,7 +460,7 @@ export function CandidateProfileTabs({
       {activeTab === 'career' && (
         <SectionShell
           title="Karriereziele"
-          description="Rolle, Arbeitsmodell und Gehaltsziele."
+          description="Definiere Zielrolle, Arbeitsmodell und Vergütung."
           editing={editingTab === 'career'}
           saving={saving}
           error={error}
@@ -413,40 +469,46 @@ export function CandidateProfileTabs({
           onSave={() => saveTab('career')}
         >
           {editingTab === 'career' ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
-                <Input value={draft.currentRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('currentRole', e.target.value)} placeholder="Aktuelle Rolle" />
-                <Input value={draft.targetRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('targetRole', e.target.value)} placeholder="Zielrolle" />
-                <Input type="number" value={draft.salaryExpectationBase} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salaryExpectationBase', Number(e.target.value || 0))} placeholder="Grundgehalt" />
-                <Input type="number" value={draft.salaryExpectationOte} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salaryExpectationOte', Number(e.target.value || 0))} placeholder="OTE" />
-                <Input value={draft.noticePeriod} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('noticePeriod', e.target.value)} placeholder="Kündigungsfrist" className="md:col-span-2" />
+                <FormField label="Aktuelle Rolle" icon={BriefcaseBusiness}>
+                  <Input value={draft.currentRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('currentRole', e.target.value)} placeholder="z. B. Account Executive" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="Zielrolle" icon={Target}>
+                  <Input value={draft.targetRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('targetRole', e.target.value)} placeholder="z. B. Senior AE" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="Grundgehalt" icon={Wallet}>
+                  <Input type="number" value={draft.salaryExpectationBase} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salaryExpectationBase', Number(e.target.value || 0))} placeholder="60000" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="OTE Ziel" icon={Wallet}>
+                  <Input type="number" value={draft.salaryExpectationOte} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salaryExpectationOte', Number(e.target.value || 0))} placeholder="100000" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="Kündigungsfrist" icon={Target} className="md:col-span-2">
+                  <Input value={draft.noticePeriod} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('noticePeriod', e.target.value)} placeholder="z. B. 3 Monate" className="h-11 rounded-xl" />
+                </FormField>
               </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Zielrollen</p>
-                <AddableTagField values={draft.desiredJobRoles} suggestions={JOB_ROLES as unknown as readonly string[]} onAdd={(value) => addTag('desiredJobRoles', value)} onRemove={(value) => removeTag('desiredJobRoles', value)} />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Arbeitsmodell</p>
-                <ChoiceGroup options={REMOTE_TYPES as unknown as readonly string[]} values={draft.remotePreference} onToggle={(value) => toggleArrayValue('remotePreference', value)} />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Branchen</p>
+              <Subsection title="Zielrollen" description="Füge Rollen hinzu, die für dich besonders relevant sind.">
+                <AddableTagField values={draft.desiredJobRoles} suggestions={JOB_ROLES as unknown as readonly string[]} onAdd={(value) => addTag('desiredJobRoles', value)} onRemove={(value) => removeTag('desiredJobRoles', value)} placeholder="Zielrolle hinzufügen" />
+              </Subsection>
+              <Subsection title="Arbeitsmodell" description="Welche Setups passen zu deinem Alltag?">
+                <ChoiceGroup options={REMOTE_TYPES as unknown as readonly string[]} values={draft.remotePreference} onToggle={(value) => toggleArrayValue('remotePreference', value)} getLabel={(value) => REMOTE_TYPE_LABELS[value as keyof typeof REMOTE_TYPE_LABELS] || value} />
+              </Subsection>
+              <Subsection title="Branchen" description="In welchen Themenfeldern möchtest du idealerweise arbeiten?">
                 <ChoiceGroup options={SALES_INDUSTRY_OPTIONS as unknown as readonly string[]} values={draft.desiredIndustries} onToggle={(value) => toggleArrayValue('desiredIndustries', value)} />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Karriereziele</p>
+              </Subsection>
+              <Subsection title="Karriereziele" description="Woran soll dein nächster Schritt gemessen werden?">
                 <ChoiceGroup options={CAREER_GOAL_OPTIONS as unknown as readonly string[]} values={draft.careerGoals} onToggle={(value) => toggleArrayValue('careerGoals', value)} />
-              </div>
+              </Subsection>
             </div>
           ) : (
             <SummaryGrid
               items={[
-                { label: 'Aktuelle Rolle', value: normalizedProfile.currentRole || '–' },
-                { label: 'Zielrolle', value: normalizedProfile.targetRole || normalizedProfile.desiredJobRoles.join(', ') || '–' },
-                { label: 'Arbeitsmodell', value: normalizedProfile.remotePreference.map((value) => REMOTE_TYPE_LABELS[value as keyof typeof REMOTE_TYPE_LABELS] || value).join(', ') || '–' },
-                { label: 'Karriereziele', value: normalizedProfile.careerGoals.join(', ') || '–' },
-                { label: 'Base', value: formatCurrency(normalizedProfile.salaryExpectationBase || 0) },
-                { label: 'OTE', value: formatCurrency(normalizedProfile.salaryExpectationOte || 0) },
+                { label: 'Aktuelle Rolle', value: normalizedProfile.currentRole || '–', icon: BriefcaseBusiness },
+                { label: 'Zielrolle', value: normalizedProfile.targetRole || normalizedProfile.desiredJobRoles.join(', ') || '–', icon: Target },
+                { label: 'Arbeitsmodell', value: normalizedProfile.remotePreference.map((value) => REMOTE_TYPE_LABELS[value as keyof typeof REMOTE_TYPE_LABELS] || value).join(', ') || '–', icon: Globe },
+                { label: 'Karriereziele', value: normalizedProfile.careerGoals.join(', ') || '–', icon: Target },
+                { label: 'Grundgehalt', value: formatCurrency(normalizedProfile.salaryExpectationBase || 0), icon: Wallet },
+                { label: 'OTE', value: formatCurrency(normalizedProfile.salaryExpectationOte || 0), icon: Wallet },
               ]}
             />
           )}
@@ -456,7 +518,7 @@ export function CandidateProfileTabs({
       {activeTab === 'sales' && (
         <SectionShell
           title="Saleserfahrung"
-          description="Erfahrung, Motion und Kennzahlen."
+          description="Zeige Track Record, Deal-Größen und dein Sales-Umfeld."
           editing={editingTab === 'sales'}
           saving={saving}
           error={error}
@@ -465,47 +527,57 @@ export function CandidateProfileTabs({
           onSave={() => saveTab('sales')}
         >
           {editingTab === 'sales' ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
-                <Input type="number" value={draft.yearsOfExperience} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('yearsOfExperience', Number(e.target.value || 0))} placeholder="Jahre Erfahrung" />
-                <Input value={deriveSeniorityFromYears(draft.yearsOfExperience) || draft.seniority} disabled placeholder="Seniorität" />
-                <select value={draft.salesCycleLength} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('salesCycleLength', e.target.value)} className="flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm">
-                  <option value="">Sales Cycle</option>
-                  {SALES_CYCLE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-                <Input value={draft.territorySize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('territorySize', e.target.value)} placeholder="Territory" />
-                <Input type="number" value={draft.averageDealSize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageDealSize', e.target.value)} placeholder="Average Deal Size" />
-                <Input type="number" value={draft.largestDealClosed} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('largestDealClosed', e.target.value)} placeholder="Largest Deal Closed" />
-                <Input type="number" value={draft.averageSalesCycle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageSalesCycle', e.target.value)} placeholder="Average Sales Cycle in Tagen" className="md:col-span-2" />
+                <FormField label="Jahre Erfahrung" icon={TrendingUp}>
+                  <Input type="number" value={draft.yearsOfExperience} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('yearsOfExperience', Number(e.target.value || 0))} placeholder="3" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="Abgeleitete Seniorität" icon={TrendingUp}>
+                  <Input value={deriveSeniorityFromYears(draft.yearsOfExperience) || draft.seniority} disabled className="h-11 rounded-xl bg-muted/40" />
+                </FormField>
+                <FormField label="Sales Cycle" icon={TrendingUp}>
+                  <select value={draft.salesCycleLength} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('salesCycleLength', e.target.value)} className={SELECT_CLASSES}>
+                    <option value="">Bitte auswählen</option>
+                    {SALES_CYCLE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Territory" icon={MapPin}>
+                  <Input value={draft.territorySize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('territorySize', e.target.value)} placeholder="z. B. DACH, Enterprise Nord" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="Ø Deal Size" icon={Wallet}>
+                  <Input type="number" value={draft.averageDealSize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageDealSize', e.target.value)} placeholder="25000" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="Größter Deal" icon={Wallet}>
+                  <Input type="number" value={draft.largestDealClosed} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('largestDealClosed', e.target.value)} placeholder="120000" className="h-11 rounded-xl" />
+                </FormField>
+                <FormField label="Ø Sales Cycle in Tagen" icon={TrendingUp} className="md:col-span-2">
+                  <Input type="number" value={draft.averageSalesCycle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageSalesCycle', e.target.value)} placeholder="60" className="h-11 rounded-xl" />
+                </FormField>
               </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Deal Size Präferenzen</p>
+              <Subsection title="Deal Size Präferenzen" description="Welche Bandbreiten passen am besten zu deinem Background?">
                 <ChoiceGroup options={DEAL_SIZE_OPTIONS} values={draft.dealSizePreference} onToggle={(value) => toggleArrayValue('dealSizePreference', value)} />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Sales Motion</p>
+              </Subsection>
+              <Subsection title="Sales Motion" description="Markiere die Bewegungen, in denen du dich sicher fühlst.">
                 <ChoiceGroup options={SALES_MOTION_OPTIONS as unknown as readonly string[]} values={draft.salesMotionExperience} onToggle={(value) => toggleArrayValue('salesMotionExperience', value)} />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Industrie-Erfahrung</p>
+              </Subsection>
+              <Subsection title="Industrie-Erfahrung" description="Diese Bereiche helfen beim Matching besonders stark.">
                 <ChoiceGroup options={SALES_INDUSTRY_OPTIONS as unknown as readonly string[]} values={draft.industriesExperience} onToggle={(value) => toggleArrayValue('industriesExperience', value)} />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Kurzprofil</p>
-                <textarea value={draft.shortBio} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setField('shortBio', e.target.value)} rows={4} className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20" />
-              </div>
+              </Subsection>
+              <Subsection title="Kurzprofil" description="2-3 Sätze zu deinem Fokus, Track Record und Zielbild.">
+                <textarea value={draft.shortBio} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setField('shortBio', e.target.value)} rows={4} className={TEXTAREA_CLASSES} placeholder="Beschreibe kurz dein Profil, deine Stärken und dein ideales Umfeld." />
+              </Subsection>
             </div>
           ) : (
             <SummaryGrid
               items={[
-                { label: 'Erfahrung', value: `${normalizedProfile.yearsOfExperience || 0} Jahre` },
-                { label: 'Seniorität', value: SENIORITY_LABELS[normalizedProfile.seniority as keyof typeof SENIORITY_LABELS] || normalizedProfile.seniority || '–' },
-                { label: 'Sales Cycle', value: normalizedProfile.salesCycleLength || '–' },
-                { label: 'Average Deal Size', value: normalizedProfile.averageDealSize ? formatCurrency(Number(normalizedProfile.averageDealSize)) : '–' },
-                { label: 'Largest Deal Closed', value: normalizedProfile.largestDealClosed ? formatCurrency(Number(normalizedProfile.largestDealClosed)) : '–' },
-                { label: 'Territory', value: normalizedProfile.territorySize || '–' },
+                { label: 'Erfahrung', value: `${normalizedProfile.yearsOfExperience || 0} Jahre`, icon: TrendingUp },
+                { label: 'Seniorität', value: SENIORITY_LABELS[normalizedProfile.seniority as keyof typeof SENIORITY_LABELS] || normalizedProfile.seniority || '–', icon: TrendingUp },
+                { label: 'Sales Cycle', value: normalizedProfile.salesCycleLength || '–', icon: TrendingUp },
+                { label: 'Ø Deal Size', value: normalizedProfile.averageDealSize ? formatCurrency(Number(normalizedProfile.averageDealSize)) : '–', icon: Wallet },
+                { label: 'Größter Deal', value: normalizedProfile.largestDealClosed ? formatCurrency(Number(normalizedProfile.largestDealClosed)) : '–', icon: Wallet },
+                { label: 'Territory', value: normalizedProfile.territorySize || '–', icon: MapPin },
               ]}
             />
           )}
@@ -515,27 +587,38 @@ export function CandidateProfileTabs({
       {activeTab === 'documents' && (
         <SectionShell
           title="Dokumente"
-          description="Lebenslauf und Unterlagen."
+          description="CV und Unterlagen an einem zentralen Ort."
           editing={false}
         >
-          <div className="space-y-4">
-            <SummaryGrid
-              items={[
-                { label: 'CV', value: normalizedProfile.cvFileName || 'Noch nicht hochgeladen' },
-                {
-                  label: 'Hochgeladen am',
-                  value: normalizedProfile.cvUploadDate
-                    ? new Date(normalizedProfile.cvUploadDate).toLocaleDateString('de-DE')
-                    : '–',
-                },
-              ]}
-            />
-            <Link href="/dashboard/candidate/dokumente">
-              <Button variant="outline" className="gap-1.5">
-                <Upload className="h-4 w-4" />
-                Dokumente verwalten
-              </Button>
-            </Link>
+          <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+            <div className="rounded-2xl border border-border/70 bg-muted/20 p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Lebenslauf</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {normalizedProfile.cvFileName || 'Noch kein Dokument hochgeladen'}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {normalizedProfile.cvUploadDate
+                      ? `Zuletzt aktualisiert am ${new Date(normalizedProfile.cvUploadDate).toLocaleDateString('de-DE')}`
+                      : 'Lade einen aktuellen CV hoch, damit Recruiter dein Profil schneller einordnen können.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background p-5">
+              <p className="text-sm font-semibold">Nächster Schritt</p>
+              <p className="mt-1 text-sm text-muted-foreground">Verwalte hier deinen CV und weitere Unterlagen.</p>
+              <Link href="/dashboard/candidate/dokumente" className="mt-4 inline-flex">
+                <Button variant="outline" className="gap-1.5 rounded-xl">
+                  <Upload className="h-4 w-4" />
+                  Dokumente verwalten
+                </Button>
+              </Link>
+            </div>
           </div>
         </SectionShell>
       )}
@@ -543,7 +626,7 @@ export function CandidateProfileTabs({
       {activeTab === 'preferences' && (
         <SectionShell
           title="Präferenzen"
-          description="Skills, Sprachen und Wunschunternehmen."
+          description="Skills, Sprachen und Wunschumfeld für bessere Matches."
           editing={editingTab === 'preferences'}
           saving={saving}
           error={error}
@@ -552,48 +635,46 @@ export function CandidateProfileTabs({
           onSave={() => saveTab('preferences')}
         >
           {editingTab === 'preferences' ? (
-            <div className="space-y-4">
-              <div>
-                <p className="mb-2 text-sm font-medium">Skills</p>
+            <div className="space-y-5">
+              <Subsection title="Skills" description="Pflege die wichtigsten Fähigkeiten, die dich ausmachen.">
                 <AddableTagField
                   values={draft.skills}
                   suggestions={SALES_SKILL_SUGGESTIONS as unknown as readonly string[]}
                   onAdd={(value) => addTag('skills', value)}
                   onRemove={(value) => removeTag('skills', value)}
+                  placeholder="Skill hinzufügen"
                 />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Sprachen</p>
+              </Subsection>
+              <Subsection title="Sprachen" description="Diese Informationen werden auch für internationale Rollen genutzt.">
                 <AddableTagField
                   values={draft.languages}
                   suggestions={LANGUAGE_OPTIONS as unknown as readonly string[]}
                   onAdd={(value) => addTag('languages', value)}
                   onRemove={(value) => removeTag('languages', value)}
+                  placeholder="Sprache hinzufügen"
                 />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Wunsch-Unternehmen</p>
+              </Subsection>
+              <Subsection title="Wunsch-Unternehmen" description="Welche Company-Setups sprechen dich besonders an?">
                 <ChoiceGroup options={COMPANY_TYPE_OPTIONS as unknown as readonly string[]} values={draft.preferredCompanyTypes} onToggle={(value) => toggleArrayValue('preferredCompanyTypes', value)} />
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">Standortpräferenz</p>
+              </Subsection>
+              <Subsection title="Standortpräferenz" description="Wie flexibel bist du beim Standort?">
                 <ChoiceGroup options={LOCATION_PREFERENCE_OPTIONS} values={draft.locationPreference} onToggle={(value) => toggleArrayValue('locationPreference', value)} />
-              </div>
+              </Subsection>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div>
-                <p className="mb-2 text-xs text-muted-foreground">Skills</p>
-                <ChipGroup values={normalizedProfile.skills} />
-              </div>
-              <div>
-                <p className="mb-2 text-xs text-muted-foreground">Sprachen</p>
-                <ChipGroup values={normalizedProfile.languages} />
+            <div className="space-y-5">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <InfoPanel title="Skills" icon={BriefcaseBusiness}>
+                  <ChipGroup values={normalizedProfile.skills} />
+                </InfoPanel>
+                <InfoPanel title="Sprachen" icon={Languages}>
+                  <ChipGroup values={normalizedProfile.languages} />
+                </InfoPanel>
               </div>
               <SummaryGrid
                 items={[
-                  { label: 'Wunsch-Unternehmen', value: normalizedProfile.preferredCompanyTypes.join(', ') || '–' },
-                  { label: 'Standortpräferenz', value: normalizedProfile.locationPreference.join(', ') || '–' },
+                  { label: 'Wunsch-Unternehmen', value: normalizedProfile.preferredCompanyTypes.join(', ') || '–', icon: BriefcaseBusiness },
+                  { label: 'Standortpräferenz', value: normalizedProfile.locationPreference.join(', ') || '–', icon: MapPin },
                 ]}
               />
             </div>
@@ -613,21 +694,27 @@ export function CandidateProfileTabs({
           onSave={() => saveTab('privacy')}
         >
           {editingTab === 'privacy' ? (
-            <div className="space-y-3">
-              <label className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm">
-                <span>Open to Work</span>
-                <input type="checkbox" checked={draft.openToWork} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('openToWork', e.target.checked)} />
-              </label>
-              <label className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm">
-                <span>Sichtbar für Recruiter</span>
-                <input type="checkbox" checked={draft.visibleToRecruiters} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('visibleToRecruiters', e.target.checked)} />
-              </label>
+            <div className="grid gap-4 md:grid-cols-2">
+              <ToggleCard
+                label="Open to Work"
+                description="Signalisiere aktiv, dass du offen für neue Rollen bist."
+                checked={draft.openToWork}
+                onChange={(checked) => setField('openToWork', checked)}
+                icon={ShieldCheck}
+              />
+              <ToggleCard
+                label="Sichtbar für Recruiter"
+                description="Erlaube Recruitern, dein Profil für passende Matches zu sehen."
+                checked={draft.visibleToRecruiters}
+                onChange={(checked) => setField('visibleToRecruiters', checked)}
+                icon={Eye}
+              />
             </div>
           ) : (
             <SummaryGrid
               items={[
-                { label: 'Open to Work', value: normalizedProfile.openToWork ? 'Ja' : 'Nein' },
-                { label: 'Sichtbar für Recruiter', value: normalizedProfile.visibleToRecruiters ? 'Ja' : 'Nein' },
+                { label: 'Open to Work', value: normalizedProfile.openToWork ? 'Aktiv' : 'Nicht aktiv', icon: ShieldCheck },
+                { label: 'Recruiter-Sichtbarkeit', value: normalizedProfile.visibleToRecruiters ? 'Aktiv' : 'Nicht aktiv', icon: Eye },
               ]}
             />
           )}
@@ -659,39 +746,108 @@ function SectionShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border bg-background p-6">
+    <div className="rounded-[28px] border border-border/70 bg-background/95 p-6 shadow-sm md:p-7">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
         {editing ? (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onCancel}>Abbrechen</Button>
-            <Button size="sm" onClick={onSave} disabled={saving}>{saving ? 'Speichern...' : 'Speichern'}</Button>
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={onCancel}>Abbrechen</Button>
+            <Button size="sm" className="rounded-xl" onClick={onSave} disabled={saving}>{saving ? 'Speichern...' : 'Speichern'}</Button>
           </div>
         ) : onEdit ? (
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={onEdit}>
+          <Button variant="outline" size="sm" className="gap-1.5 rounded-xl" onClick={onEdit}>
             <PencilLine className="h-3.5 w-3.5" />
             Bearbeiten
           </Button>
         ) : null}
       </div>
-      {children}
-      {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+      <div className="space-y-5">{children}</div>
+      {error ? <p className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }
 
-function SummaryGrid({ items }: { items: Array<{ label: string; value: string }> }) {
+function FormField({
+  label,
+  icon: Icon,
+  className,
+  children,
+}: {
+  label: string;
+  icon?: React.ElementType;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn('space-y-2', className)}>
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        {Icon ? <Icon className="h-4 w-4 text-muted-foreground" /> : null}
+        <span>{label}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Subsection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-muted/[0.18] p-4">
+      <div className="mb-3">
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SummaryGrid({
+  items,
+}: {
+  items: Array<{ label: string; value: string; icon?: React.ElementType }>;
+}) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {items.map((item) => (
-        <div key={item.label}>
-          <p className="text-xs text-muted-foreground">{item.label}</p>
-          <p className="mt-1 text-sm font-medium">{item.value || '–'}</p>
+        <div key={item.label} className="rounded-2xl border border-border/70 bg-muted/[0.16] p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {item.icon ? <item.icon className="h-3.5 w-3.5" /> : null}
+            <span>{item.label}</span>
+          </div>
+          <p className="mt-2 break-words text-sm font-semibold leading-6 text-foreground">{item.value || '–'}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function InfoPanel({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon?: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-muted/[0.16] p-4">
+      <div className="mb-3 flex items-center gap-2">
+        {Icon ? <Icon className="h-4 w-4 text-muted-foreground" /> : null}
+        <p className="text-sm font-semibold">{title}</p>
+      </div>
+      {children}
     </div>
   );
 }
@@ -704,7 +860,7 @@ function ChipGroup({ values }: { values: string[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {values.map((value) => (
-        <Badge key={value} variant="secondary">{value}</Badge>
+        <Badge key={value} variant="secondary" className="rounded-full border border-border/60 bg-background px-3 py-1 text-xs font-medium text-foreground">{value}</Badge>
       ))}
     </div>
   );
@@ -714,10 +870,12 @@ function ChoiceGroup({
   options,
   values,
   onToggle,
+  getLabel,
 }: {
   options: readonly string[];
   values: string[];
   onToggle: (value: string) => void;
+  getLabel?: (value: string) => string;
 }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -726,11 +884,14 @@ function ChoiceGroup({
           key={option}
           type="button"
           onClick={() => onToggle(option)}
-          className={`rounded-full border px-3 py-1.5 text-sm transition ${
-            values.includes(option) ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-accent/40'
-          }`}
+          className={cn(
+            'rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
+            values.includes(option)
+              ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
+              : 'border-border/70 bg-background hover:bg-accent/40',
+          )}
         >
-          {option}
+          {getLabel ? getLabel(option) : option}
         </button>
       ))}
     </div>
@@ -742,11 +903,13 @@ function AddableTagField({
   suggestions,
   onAdd,
   onRemove,
+  placeholder,
 }: {
   values: string[];
   suggestions: readonly string[];
   onAdd: (value: string) => void;
   onRemove: (value: string) => void;
+  placeholder?: string;
 }) {
   const [inputValue, setInputValue] = useState('');
 
@@ -767,16 +930,17 @@ function AddableTagField({
               commitValue();
             }
           }}
-          placeholder="Wert hinzufügen"
+          placeholder={placeholder || 'Wert hinzufügen'}
+          className="h-11 rounded-xl"
         />
-        <Button type="button" variant="outline" onClick={commitValue}>Hinzufügen</Button>
+        <Button type="button" variant="outline" className="rounded-xl" onClick={commitValue}>Hinzufügen</Button>
       </div>
       <div className="flex flex-wrap gap-2">
         {values.map((value) => (
           <Badge
             key={value}
             variant="secondary"
-            className="cursor-pointer"
+            className="cursor-pointer rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
             onClick={() => onRemove(value)}
           >
             {value}
@@ -789,7 +953,7 @@ function AddableTagField({
           <button
             key={value}
             type="button"
-            className="rounded-full border px-3 py-1 text-xs hover:bg-accent/40"
+            className="rounded-full border border-border/70 bg-background px-3 py-1 text-xs font-medium hover:bg-accent/40"
             onClick={() => onAdd(value)}
           >
             {value}
@@ -797,5 +961,40 @@ function AddableTagField({
         ))}
       </div>
     </div>
+  );
+}
+
+function ToggleCard({
+  label,
+  description,
+  checked,
+  onChange,
+  icon: Icon,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  icon?: React.ElementType;
+}) {
+  return (
+    <label className={cn(
+      'flex items-start justify-between gap-4 rounded-2xl border p-4 transition',
+      checked ? 'border-primary/30 bg-primary/[0.05]' : 'border-border/70 bg-muted/[0.12]',
+    )}>
+      <div className="flex gap-3">
+        <div className={cn(
+          'mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl border',
+          checked ? 'border-primary/20 bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground',
+        )}>
+          {Icon ? <Icon className="h-4 w-4" /> : null}
+        </div>
+        <div>
+          <p className="text-sm font-semibold">{label}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <input type="checkbox" checked={checked} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)} className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
+    </label>
   );
 }

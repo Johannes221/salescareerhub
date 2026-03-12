@@ -80,6 +80,17 @@ export interface CandidateProfile {
   shortBio?: string;
   skills?: string[];
   dealSizePreference?: string[];
+  salesCycleLength?: string;
+  averageDealSize?: number;
+  averageSalesCycle?: number;
+  quotaHistory?: {
+    target?: number | null;
+    attainment?: number | null;
+  } | null;
+  industriesExperience?: string[];
+  salesMotionExperience?: string | string[];
+  largestDealClosed?: number;
+  territorySize?: string;
   workExperiences?: Array<{
     id: string;
     title: string;

@@ -61,10 +61,12 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="container py-8">
-      <div className="mb-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
         <h1 className="text-3xl font-bold mb-2">Software Sales Jobs</h1>
         <p className="text-muted-foreground">Spezialisierte Positionen im DACH-Raum – von SDR bis VP Sales</p>
+        </div>
       </div>
 
       <form onSubmit={handleSearch} className="flex gap-2 mb-6">
@@ -154,9 +156,9 @@ export default function JobsPage() {
       </div>
 
       {loading ? (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-48 rounded-lg bg-muted animate-pulse" />
+            <div key={i} className="h-64 rounded-2xl bg-muted animate-pulse" />
           ))}
         </div>
       ) : jobs.length === 0 ? (
@@ -169,53 +171,54 @@ export default function JobsPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
           {jobs.map((job: any) => (
             <Link key={job.id} href={`/jobs/${job.slug}`}>
-              <Card className="hover:shadow-md transition-shadow h-full">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between mb-3">
+              <Card className="h-full rounded-2xl border-border/70 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+                <CardContent className="flex h-full flex-col p-6">
+                  <div className="mb-4 flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
                         <Building2 className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold line-clamp-1">{job.title}</h3>
-                        <p className="text-sm text-muted-foreground">{getPublicCompanyLabel(job)}</p>
+                      <div className="min-w-0">
+                        <h3 className="line-clamp-2 text-lg font-semibold leading-snug">{job.title}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">{getPublicCompanyLabel(job)}</p>
                       </div>
                     </div>
-                    <div className="flex gap-1">
-                      {job.isFeatured && <Badge>Featured</Badge>}
-                      {job.isAgencyManaged && <Badge variant="secondary">Begleitet</Badge>}
-                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 mb-3">
+
+                  <div className="mb-4 flex flex-wrap gap-2">
                     <Badge variant="outline">{job.roleCategory}</Badge>
                     {job.remoteType && <Badge variant="outline">{REMOTE_TYPE_LABELS[job.remoteType as keyof typeof REMOTE_TYPE_LABELS] || job.remoteType}</Badge>}
                     {job.seniority && <Badge variant="outline">{SENIORITY_LABELS[job.seniority as keyof typeof SENIORITY_LABELS] || job.seniority}</Badge>}
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
+
+                  <div className="mb-3 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                     {job.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{job.location}</span>}
                     {job.country && <span>{job.country}</span>}
                   </div>
-                  <div className="flex gap-4 text-sm">
+
+                  <div className="grid gap-2 text-sm sm:grid-cols-2">
                     {(job.salaryMin || job.salaryMax) && (
-                      <span>Base: {formatSalaryRange(job.salaryMin, job.salaryMax)}</span>
+                      <span className="rounded-xl bg-muted/50 px-3 py-2">Base: {formatSalaryRange(job.salaryMin, job.salaryMax)}</span>
                     )}
                     {(job.oteMin || job.oteMax) && (
-                      <span className="font-medium text-primary">OTE: {formatSalaryRange(job.oteMin, job.oteMax)}</span>
+                      <span className="rounded-xl bg-primary/5 px-3 py-2 font-medium text-primary">OTE: {formatSalaryRange(job.oteMin, job.oteMax)}</span>
                     )}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+
+                  {job.description && (
+                    <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                      {job.description}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     {job.companyStage ? <Badge variant="secondary">{job.companyStage}</Badge> : null}
                     {job.industry ? <Badge variant="secondary">{job.industry}</Badge> : null}
                     {job.salesMotion ? <Badge variant="secondary">{job.salesMotion}</Badge> : null}
                     {job.averageDealSize ? <Badge variant="outline">Deal Size: {formatSalaryRange(job.averageDealSize, job.averageDealSize)}</Badge> : null}
-                  </div>
-                  <div className="mt-4">
-                    <Button variant="outline" size="sm">
-                      Anonymisierte Stelle ansehen
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
