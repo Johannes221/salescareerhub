@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { JOB_ROLES, COUNTRIES, REMOTE_TYPE_LABELS, SENIORITY_LABELS, EMPLOYMENT_TYPE_LABELS, SOURCE_TYPE_LABELS } from '@/lib/config';
-import { formatSalaryRange } from '@/lib/utils';
+import { JOB_ROLES, COUNTRIES, REMOTE_TYPE_LABELS, SENIORITY_LABELS } from '@/lib/config';
+import { formatSalaryRange, getPublicCompanyLabel } from '@/lib/utils';
 import { Search, MapPin, Briefcase, Building2, Filter, X, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 
 export default function JobsPage() {
@@ -73,7 +73,7 @@ export default function JobsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Jobtitel, Unternehmen oder Stichwort..."
+            placeholder="Jobtitel, Region oder Stichwort..."
             className="pl-9"
           />
         </div>
@@ -181,7 +181,7 @@ export default function JobsPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold line-clamp-1">{job.title}</h3>
-                        <p className="text-sm text-muted-foreground">{job.company?.name || 'Unternehmen'}</p>
+                        <p className="text-sm text-muted-foreground">{getPublicCompanyLabel(job)}</p>
                       </div>
                     </div>
                     <div className="flex gap-1">

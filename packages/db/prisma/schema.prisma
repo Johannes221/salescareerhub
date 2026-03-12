@@ -26,6 +26,7 @@ model User {
   updatedAt           DateTime  @updatedAt
 
   candidateProfile CandidateProfile?
+  adminProfile     AdminUser?
   company          Company?
   reviews          CompanyReview[]
   notifications    Notification[]
@@ -43,28 +44,51 @@ model CandidateProfile {
   lastName              String
   email                 String
   phone                 String?
+  name                  String?
   linkedinUrl           String?
   location              String?
   country               String?
-  remotePreference      String?
+  remotePreference      String[]
   yearsOfExperience     Int?
   currentRole           String?
+  preferredRole         String?
   targetRole            String?
+  desiredJobRoles       String[]
+  desiredIndustries     String[]
+  careerGoals           String[]
+  preferredCompanyTypes String[]
   seniority             String?
   languages             String[]
+  languageProficiencies Json?
   salaryExpectationBase Int?
+  expectedOte           Int?
   salaryExpectationOte  Int?
+  salaryExpectationCurrency String?
   noticePeriod          String?
   cvUrl                 String?
+  cvFileName            String?
+  cvUploadDate          DateTime?
   shortBio              String?
   skills                String[]
+  googlePlaceId         String?
+  googlePlaceData       Json?
+  onboardingStep        Int?
+  onboardingSource      String?
+  averageDealSize       Int?
+  averageSalesCycle     Int?
+  quotaHistory          Json?
+  industriesExperience  String[]
+  salesMotionExperience String?
+  largestDealClosed     Int?
+  territorySize         String?
   visibleToRecruiters   Boolean   @default(false)
   openToWork            Boolean   @default(true)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  applications Application[]
-  documents    Document[]
+  applications    Application[]
+  documents       Document[]
+  recruitingCalls RecruitingCall[]
 }
 
 // ─── Company ─────────────────────────────────────────────────
@@ -77,11 +101,15 @@ model Company {
   logoUrl        String?
   website        String?
   linkedinUrl    String?
+  location       String?
   country        String?
   city           String?
   employeeCount  String?
   fundingStage   String?
   industry       String?
+  contactPerson  String?
+  email          String?
+  agreementSigned Boolean  @default(false)
   description    String?
   benefits       String[]
   remotePolicy   String?
@@ -104,6 +132,8 @@ model Job {
   id                      String    @id @default(auto()) @map("_id") @db.ObjectId
   companyId               String    @db.ObjectId
   company                 Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  originalCompanyName     String?
+  anonymizedCompanyProfile String?
   title                   String
   slug                    String    @unique
   roleCategory            String
@@ -112,12 +142,22 @@ model Job {
   location                String?
   country                 String?
   remoteType              String    @default("hybrid")
+  industry                String?
+  companyStage            String?
   salaryMin               Int?
   salaryMax               Int?
+  baseSalary              Int?
   oteMin                  Int?
   oteMax                  Int?
   currency                String    @default("EUR")
+  commissionStructure     String?
+  salesMotion             String?
+  averageDealSize         Int?
+  salesCycleLength        Int?
+  quota                   String?
   description             String
+  descriptionOriginal     String?
+  descriptionAnonymized   String?
   requirements            String?
   benefits                String?
   sourceType              String    @default("direct_company_posting")
@@ -153,7 +193,22 @@ model Application {
   internalNotes      String?
   fitScore           Int?
   adminNotes         String?
+  notesAdmin         String?
   candidateMessage   String?
+  linkedinUrl        String?
+  yearsOfSalesExperience Int?
+  currentRoleSnapshot String?
+  averageDealSize    Int?
+  averageSalesCycle  Int?
+  quotaTarget        Int?
+  quotaAttainment    Int?
+  industriesExperience String[]
+  salesMotionExperience String[]
+  largestDealClosed  Int?
+  territoryType      String?
+  cvDocumentId       String?   @db.ObjectId
+  cvFileName         String?
+  cvFileUrl          String?
   forwardedAt        DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -215,6 +270,15 @@ model SalaryInsight {
   year             Int
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model SalesInsight {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  content   String
+  category  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Ranking Snapshot ────────────────────────────────────────
@@ -302,6 +366,18 @@ model Document {
   createdAt   DateTime @default(now())
 }
 
+model RecruitingCall {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  candidateId   String           @db.ObjectId
+  candidate     CandidateProfile @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  scheduledTime DateTime
+  callType      String
+  meetingLink   String?
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
 // ─── Analytics Event ─────────────────────────────────────────
 model AnalyticsEvent {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -318,6 +394,14 @@ model AdminSetting {
   id    String @id @default(auto()) @map("_id") @db.ObjectId
   key   String @unique
   value String
+  updatedAt DateTime @updatedAt
+}
+
+model AdminUser {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 

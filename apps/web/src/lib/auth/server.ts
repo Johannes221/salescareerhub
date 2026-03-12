@@ -81,6 +81,10 @@ function getAdminApp(): App {
   return adminApp;
 }
 
+export function getFirebaseAdminApp() {
+  return getAdminApp();
+}
+
 export async function verifyIdToken(token: string): Promise<DecodedIdToken> {
   const auth = getAuth(getAdminApp());
   return auth.verifyIdToken(token);

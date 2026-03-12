@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { AnalyticsBars } from '@/components/ui/analytics-bars';
 import { EmptyState } from '@/components/ui/empty-state';
 import { APPLICATION_STATUS_LABELS } from '@/lib/config';
+import { getPublicCompanyLabel } from '@/lib/utils';
 import { Bell, Briefcase, FileText, Heart, Sparkles } from 'lucide-react';
 
 type CandidateDashboardData = {
@@ -181,7 +182,7 @@ export default function CandidateDashboard() {
                     <div key={app.id} className="flex items-center justify-between rounded-lg border p-3">
                       <div>
                         <p className="font-medium">{app.job?.title || 'Job'}</p>
-                        <p className="text-sm text-muted-foreground">{app.job?.company?.name || 'Unternehmen'}</p>
+                        <p className="text-sm text-muted-foreground">{getPublicCompanyLabel(app.job)}</p>
                       </div>
                       <Badge
                         variant={

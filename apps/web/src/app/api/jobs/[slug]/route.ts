@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
+import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
 
 export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
   try {
     const job = await prisma.job.findUnique({
       where: { slug: params.slug },
-      include: {
-        company: {
-          select: {
-            name: true, slug: true, logoUrl: true, isVerified: true,
-            industry: true, city: true, country: true, employeeCount: true,
-            fundingStage: true, remotePolicy: true, description: true, benefits: true,
-          },
-        },
-      },
+      select: publicJobSelect,
     });
 
-    if (!job || (job.status !== 'live' && job.approvalStatus !== 'approved')) {
+    if (!job || job.status !== 'live' || job.approvalStatus !== 'approved') {
       return NextResponse.json({ success: false, error: 'Job nicht gefunden' }, { status: 404 });
     }
 
@@ -57,7 +50,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       } catch {}
     }
 
-    return NextResponse.json({ success: true, data: job, interestStatus, saved });
+    return NextResponse.json({ success: true, data: mapJobToPublic(job), interestStatus, saved });
   } catch (error) {
     console.error('Job detail error:', error);
     return NextResponse.json({ success: false, error: 'Fehler beim Laden' }, { status: 500 });

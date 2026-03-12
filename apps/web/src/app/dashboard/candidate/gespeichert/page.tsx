@@ -6,9 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { REMOTE_TYPE_LABELS } from '@/lib/config';
-import { formatSalaryRange, formatRelativeDate } from '@/lib/utils';
+import { formatSalaryRange, getPublicCompanyLabel } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
-import { Heart, Building2, MapPin, Briefcase, Trash2 } from 'lucide-react';
+import { Heart, Building2, MapPin, Trash2 } from 'lucide-react';
 
 export default function SavedJobsPage() {
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
@@ -65,7 +65,7 @@ export default function SavedJobsPage() {
                     <div className="min-w-0">
                       <p className="font-medium line-clamp-1">{saved.job?.title}</p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{saved.job?.company?.name}</span>
+                        <span>{getPublicCompanyLabel(saved.job)}</span>
                         {saved.job?.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{saved.job.location}</span>}
                         {saved.job?.remoteType && <Badge variant="outline" className="text-xs">{REMOTE_TYPE_LABELS[saved.job.remoteType as keyof typeof REMOTE_TYPE_LABELS]}</Badge>}
                       </div>

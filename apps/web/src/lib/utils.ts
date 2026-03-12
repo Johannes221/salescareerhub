@@ -35,6 +35,80 @@ export function formatRelativeDate(date: Date | string): string {
   return `vor ${Math.floor(diffDays / 365)} Jahren`;
 }
 
+function formatCalendarDate(date: Date) {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+export function buildCalendarUrl(input: {
+  title: string;
+  start: Date | string;
+  end?: Date | string;
+  details?: string;
+  location?: string;
+}) {
+  const start = new Date(input.start);
+  const end = input.end ? new Date(input.end) : new Date(start.getTime() + 45 * 60 * 1000);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: input.title,
+    dates: `${formatCalendarDate(start)}/${formatCalendarDate(end)}`,
+  });
+
+  if (input.details) {
+    params.set('details', input.details);
+  }
+
+  if (input.location) {
+    params.set('location', input.location);
+  }
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+export function getCandidateApplicationStage(status?: string | null) {
+  switch (status) {
+    case 'screening':
+    case 'shortlisted':
+      return 'Screening';
+    case 'forwarded':
+    case 'interview_1':
+    case 'interview_2':
+    case 'offer':
+      return 'Intro Sent';
+    case 'rejected':
+    case 'withdrawn':
+      return 'Rejected';
+    case 'hired':
+      return 'Hired';
+    default:
+      return 'Applied';
+  }
+}
+
+export function getPublicCompanyLabel(input?: {
+  anonymizedCompanyProfile?: string | null;
+  industry?: string | null;
+  companyStage?: string | null;
+  country?: string | null;
+} | null): string {
+  const profile = input?.anonymizedCompanyProfile?.trim();
+  if (profile) return profile;
+
+  const parts = [input?.industry, input?.companyStage]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
+
+  if (parts.length > 0) {
+    return input?.country ? `${parts.join(' · ')} · ${input.country}` : parts.join(' · ');
+  }
+
+  if (input?.country) {
+    return `Vertrauliches Unternehmen in ${input.country}`;
+  }
+
+  return 'Vertrauliches B2B SaaS Unternehmen';
+}
+
 // ─── Slugify ─────────────────────────────────────────────────
 export function slugify(text: string): string {
   return text
@@ -73,27 +147,97 @@ export const registerSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const requiredNumber = (fieldLabel: string) => z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : Number(value)),
+  z.number({
+    required_error: `${fieldLabel} ist erforderlich`,
+    invalid_type_error: `${fieldLabel} ist erforderlich`,
+  }).min(0, `${fieldLabel} ist erforderlich`),
+);
+
+const optionalNumber = () => z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : Number(value)),
+  z.number().min(0).optional(),
+);
+
+const stringArraySchema = () => z.array(z.string().trim().min(1));
+
+export const languageProficiencySchema = z.object({
+  language: z.string().trim().min(1, 'Sprache ist erforderlich'),
+  level: z.string().trim().min(1, 'Sprachniveau ist erforderlich'),
+});
+
+export function deriveSeniorityFromYears(yearsOfExperience?: number | null) {
+  if (yearsOfExperience === null || yearsOfExperience === undefined || Number.isNaN(yearsOfExperience)) {
+    return undefined;
+  }
+
+  if (yearsOfExperience < 2) return 'junior';
+  if (yearsOfExperience < 5) return 'mid';
+  if (yearsOfExperience < 8) return 'senior';
+  if (yearsOfExperience < 11) return 'lead';
+  if (yearsOfExperience < 14) return 'head';
+  if (yearsOfExperience < 17) return 'director';
+  if (yearsOfExperience < 20) return 'vp';
+  return 'c-level';
+}
+
 export const candidateProfileSchema = z.object({
-  firstName: z.string().min(1, 'Vorname ist erforderlich'),
-  lastName: z.string().min(1, 'Nachname ist erforderlich'),
+  firstName: z.string().trim().min(1, 'Vorname ist erforderlich'),
+  lastName: z.string().trim().min(1, 'Nachname ist erforderlich'),
   email: emailSchema,
   phone: z.string().optional(),
   linkedinUrl: z.string().url('Ungültige URL').optional().or(z.literal('')),
-  location: z.string().optional(),
-  country: z.string().optional(),
-  remotePreference: z.string().optional(),
-  yearsOfExperience: z.number().min(0).optional(),
-  currentRole: z.string().optional(),
-  targetRole: z.string().optional(),
+  location: z.string().trim().min(1, 'Standort ist erforderlich'),
+  country: z.string().trim().min(1, 'Land ist erforderlich'),
+  remotePreference: stringArraySchema().min(1, 'Bitte wähle mindestens eine Arbeitspräferenz aus'),
+  yearsOfExperience: requiredNumber('Berufserfahrung'),
+  currentRole: z.string().trim().min(1, 'Aktuelle Rolle ist erforderlich'),
+  targetRole: z.string().trim().optional().or(z.literal('')),
+  desiredJobRoles: stringArraySchema().min(1, 'Bitte wähle mindestens eine Zielrolle aus'),
+  desiredIndustries: stringArraySchema().min(1, 'Bitte wähle mindestens eine Branche aus'),
+  careerGoals: stringArraySchema().min(1, 'Bitte wähle mindestens ein Karriereziel aus'),
+  preferredCompanyTypes: stringArraySchema().default([]),
   seniority: z.string().optional(),
-  languages: z.array(z.string()).optional(),
-  salaryExpectationBase: z.number().min(0).optional(),
-  salaryExpectationOte: z.number().min(0).optional(),
-  noticePeriod: z.string().optional(),
-  shortBio: z.string().max(1000).optional(),
-  skills: z.array(z.string()).optional(),
+  languages: stringArraySchema().default([]),
+  languageProficiencies: z.array(languageProficiencySchema).min(1, 'Bitte gib mindestens eine Sprache an'),
+  salaryExpectationBase: requiredNumber('Grundgehalt'),
+  salaryExpectationOte: requiredNumber('OTE'),
+  salaryExpectationCurrency: z.string().default('EUR'),
+  noticePeriod: z.string().trim().optional(),
+  shortBio: z.string().max(1000).optional().or(z.literal('')),
+  skills: stringArraySchema().min(5, 'Bitte wähle mindestens 5 Skills aus'),
+  cvUrl: z.string().url('Ungültige Dateiadresse').optional().or(z.literal('')),
+  cvFileName: z.string().optional().or(z.literal('')),
+  cvUploadDate: z.any().optional(),
+  googlePlaceId: z.string().optional().or(z.literal('')),
+  googlePlaceData: z.record(z.any()).optional(),
+  onboardingStep: optionalNumber(),
+  onboardingSource: z.enum(['manual', 'cv']).optional(),
   visibleToRecruiters: z.boolean().default(false),
   openToWork: z.boolean().default(true),
+}).refine((data) => Number(data.salaryExpectationOte) >= Number(data.salaryExpectationBase), {
+  message: 'OTE muss mindestens so hoch wie das Grundgehalt sein',
+  path: ['salaryExpectationOte'],
+});
+
+export const applicationSubmissionSchema = z.object({
+  jobId: z.string().trim().min(1, 'Job-ID erforderlich'),
+  linkedinUrl: z.string().trim().url('LinkedIn-Profil ist erforderlich'),
+  yearsOfSalesExperience: optionalNumber(),
+  currentRole: z.string().trim().optional().or(z.literal('')),
+  averageDealSize: optionalNumber(),
+  averageSalesCycle: optionalNumber(),
+  quotaTarget: optionalNumber(),
+  quotaAttainment: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : Number(value)),
+    z.number().min(0).max(999).optional(),
+  ),
+  industriesExperience: stringArraySchema().default([]),
+  salesMotionExperience: stringArraySchema().default([]),
+  largestDealClosed: optionalNumber(),
+  territoryType: z.string().trim().optional().or(z.literal('')),
+  candidateMessage: z.string().max(2000).optional().or(z.literal('')),
 });
 
 export const companyProfileSchema = z.object({

@@ -1,12 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { ensureRankingSnapshots, getCurrentRankingPeriod, DEFAULT_RANKING_CATEGORY } from '@/lib/rankings';
+import { verifyIdToken } from '@/lib/auth/server';
+
+async function includeCompanyNames(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) return false;
+
+  try {
+    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
+    const user = await prisma.user.findUnique({
+      where: { firebaseUid: decoded.uid },
+      select: { role: true },
+    });
+
+    return user?.role === 'admin';
+  } catch {
+    return false;
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
     const country = searchParams.get('country') || '';
     const period = searchParams.get('period') || getCurrentRankingPeriod();
+    const withCompanyNames = await includeCompanyNames(req);
 
     await ensureRankingSnapshots(period, DEFAULT_RANKING_CATEGORY);
 
@@ -17,7 +36,13 @@ export async function GET(req: NextRequest) {
 
     const rankings = await prisma.rankingSnapshot.findMany({
       where,
-      include: { company: { select: { name: true, slug: true, logoUrl: true, isVerified: true, industry: true } } },
+      include: {
+        company: {
+          select: withCompanyNames
+            ? { name: true, slug: true, logoUrl: true, isVerified: true, industry: true }
+            : { isVerified: true, industry: true },
+        },
+      },
       orderBy: { rank: 'asc' },
     });
 

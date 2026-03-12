@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { APPLICATION_STATUS, APPLICATION_STATUS_LABELS } from '@/lib/config';
+import { APPLICATION_STATUS, APPLICATION_STATUS_LABELS, type ApplicationStatus } from '@/lib/config';
 import { formatRelativeDate } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
 import { Users, Briefcase, Star, Send, MessageSquare, ChevronDown, ChevronUp, Save, CheckCircle } from 'lucide-react';
@@ -15,7 +15,7 @@ export default function AdminApplicationsPage() {
   const { dbUser } = useAuth();
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export default function AdminApplicationsPage() {
           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${!statusFilter ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}>
           Alle ({applications.length})
         </button>
-        {APPLICATION_STATUS.map((s) => (
+        {APPLICATION_STATUS.map((s: ApplicationStatus) => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${statusFilter === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}>
             {APPLICATION_STATUS_LABELS[s]}
@@ -128,8 +128,39 @@ export default function AdminApplicationsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div><p className="text-xs text-muted-foreground">Seniority</p><p className="font-medium">{app.candidate?.seniority || '-'}</p></div>
                       <div><p className="text-xs text-muted-foreground">Skills</p><div className="flex flex-wrap gap-1">{app.candidate?.skills?.slice(0, 4).map((s: string) => <Badge key={s} variant="outline" className="text-xs">{s}</Badge>)}</div></div>
-                      <div><p className="text-xs text-muted-foreground">LinkedIn</p>{app.candidate?.linkedinUrl ? <a href={app.candidate.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">Profil öffnen</a> : <p>-</p>}</div>
+                      <div><p className="text-xs text-muted-foreground">LinkedIn</p>{(app.linkedinUrl || app.candidate?.linkedinUrl) ? <a href={app.linkedinUrl || app.candidate?.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">Profil öffnen</a> : <p>-</p>}</div>
                       <div><p className="text-xs text-muted-foreground">Kandidaten-Nachricht</p><p className="text-xs">{app.candidateMessage || 'Keine Nachricht'}</p></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                      <div><p className="text-xs text-muted-foreground">Sales Experience</p><p className="font-medium">{app.yearsOfSalesExperience ?? '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Current Role</p><p className="font-medium">{app.currentRoleSnapshot || app.candidate?.currentRole || '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Average Deal Size</p><p className="font-medium">{app.averageDealSize ?? '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Average Sales Cycle</p><p className="font-medium">{app.averageSalesCycle ? `${app.averageSalesCycle} Tage` : '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Quota Target</p><p className="font-medium">{app.quotaTarget ?? '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Quota Attainment</p><p className="font-medium">{app.quotaAttainment ? `${app.quotaAttainment}%` : '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Largest Deal</p><p className="font-medium">{app.largestDealClosed ?? '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Territory</p><p className="font-medium">{app.territoryType || '-'}</p></div>
+                      <div><p className="text-xs text-muted-foreground">CV</p>{app.cvFileUrl ? <a href={app.cvFileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">{app.cvFileName || 'CV öffnen'}</a> : <p>-</p>}</div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Industries</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(app.industriesExperience || []).length === 0
+                            ? <p>-</p>
+                            : app.industriesExperience.map((industry: string) => <Badge key={industry} variant="outline" className="text-xs">{industry}</Badge>)}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Sales Motion</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(app.salesMotionExperience || []).length === 0
+                            ? <p>-</p>
+                            : app.salesMotionExperience.map((motion: string) => <Badge key={motion} variant="outline" className="text-xs">{motion}</Badge>)}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Admin Controls */}
@@ -140,14 +171,14 @@ export default function AdminApplicationsPage() {
                           value={editData[app.id]?.status || app.status}
                           onChange={(e) => setEditField(app.id, 'status', e.target.value)}
                           className="w-full h-9 rounded-md border bg-background px-2 text-sm">
-                          {APPLICATION_STATUS.map((s) => <option key={s} value={s}>{APPLICATION_STATUS_LABELS[s]}</option>)}
+                          {APPLICATION_STATUS.map((s: ApplicationStatus) => <option key={s} value={s}>{APPLICATION_STATUS_LABELS[s]}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs font-medium">Fit-Score (1-10)</label>
                         <Input type="number" min={1} max={10}
                           value={editData[app.id]?.fitScore ?? app.fitScore ?? ''}
-                          onChange={(e) => setEditField(app.id, 'fitScore', parseInt(e.target.value) || null)}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditField(app.id, 'fitScore', parseInt(e.target.value) || null)}
                           className="h-9" />
                       </div>
                       <div className="space-y-1">

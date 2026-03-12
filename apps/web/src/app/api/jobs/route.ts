@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
     const [jobs, total] = await Promise.all([
       prisma.job.findMany({
         where,
-        include: { company: { select: { name: true, slug: true, logoUrl: true, isVerified: true } } },
+        select: publicJobSelect,
         orderBy: [
           { isFeatured: 'desc' },
           ...(sort === 'salary_high' ? [{ oteMax: 'desc' as const }]
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: jobs,
+      data: jobs.map((job: (typeof jobs)[number]) => mapJobToPublic(job)),
       total,
       page,
       pageSize,

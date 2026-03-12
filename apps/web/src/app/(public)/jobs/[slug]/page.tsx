@@ -9,13 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   REMOTE_TYPE_LABELS, SENIORITY_LABELS, EMPLOYMENT_TYPE_LABELS,
-  SOURCE_TYPE_LABELS, APPLICATION_STATUS_LABELS,
+  SOURCE_TYPE_LABELS, APPLICATION_STATUS_LABELS, SALES_INDUSTRY_OPTIONS, SALES_MOTION_OPTIONS, TERRITORY_TYPE_OPTIONS,
 } from '@/lib/config';
-import { formatSalaryRange, formatRelativeDate } from '@/lib/utils';
+import { formatSalaryRange, formatRelativeDate, getPublicCompanyLabel } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
+import { validateFile } from '@/lib/gdpr';
 import {
-  Building2, MapPin, Briefcase, Clock, Euro, Shield, ArrowLeft,
-  Heart, Send, CheckCircle, AlertCircle, Eye, Users,
+  Building2, MapPin, Briefcase, Clock, Euro, ArrowLeft,
+  Heart, Send, CheckCircle, AlertCircle, Eye, Users, Paperclip,
 } from 'lucide-react';
 
 export default function JobDetailPage({ params }: { params: { slug: string } }) {
@@ -26,7 +27,23 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
   const [loading, setLoading] = useState(true);
   const [interestStatus, setInterestStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [applicationForm, setApplicationForm] = useState({
+    linkedinUrl: dbUser?.candidateProfile?.linkedinUrl || '',
+    yearsOfSalesExperience: dbUser?.candidateProfile?.yearsOfExperience?.toString() || '',
+    currentRole: dbUser?.candidateProfile?.currentRole || '',
+    averageDealSize: '',
+    averageSalesCycle: '',
+    quotaTarget: '',
+    quotaAttainment: '',
+    largestDealClosed: '',
+    territoryType: '',
+    candidateMessage: '',
+  });
+  const [industriesExperience, setIndustriesExperience] = useState<string[]>([]);
+  const [salesMotionExperience, setSalesMotionExperience] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
 
   const fetchJob = useCallback(async () => {
@@ -49,21 +66,101 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
     if (slug) fetchJob();
   }, [slug, fetchJob]);
 
+  useEffect(() => {
+    setApplicationForm((current) => ({
+      ...current,
+      linkedinUrl: current.linkedinUrl || dbUser?.candidateProfile?.linkedinUrl || '',
+      yearsOfSalesExperience: current.yearsOfSalesExperience || dbUser?.candidateProfile?.yearsOfExperience?.toString() || '',
+      currentRole: current.currentRole || dbUser?.candidateProfile?.currentRole || '',
+    }));
+  }, [dbUser]);
+
+  const setFieldValue = (field: string, value: string) => {
+    setApplicationForm((current) => ({ ...current, [field]: value }));
+    setFieldErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const toggleArrayValue = (
+    value: string,
+    setValues: React.Dispatch<React.SetStateAction<string[]>>,
+  ) => {
+    setValues((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
+  };
+
   const handleExpressInterest = async () => {
     if (!dbUser) { router.push('/login'); return; }
     if (dbUser.role !== 'candidate') return;
+    const nextErrors: Record<string, string> = {};
+
+    if (!applicationForm.linkedinUrl.trim()) {
+      nextErrors.linkedinUrl = 'LinkedIn ist erforderlich';
+    } else {
+      try {
+        new URL(applicationForm.linkedinUrl.trim());
+      } catch {
+        nextErrors.linkedinUrl = 'Bitte gib eine gültige LinkedIn-URL ein';
+      }
+    }
+
+    if (cvFile) {
+      const validation = validateFile(cvFile, 'CV');
+      if (!validation.valid) {
+        nextErrors.cv = validation.error || 'Ungültige Datei';
+      }
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+
     setSubmitting(true);
+    setSubmitError('');
     try {
+      const token = await getIdToken();
+      const formData = new FormData();
+      formData.append('jobId', job.id);
+      formData.append('linkedinUrl', applicationForm.linkedinUrl.trim());
+      formData.append('yearsOfSalesExperience', applicationForm.yearsOfSalesExperience);
+      formData.append('currentRole', applicationForm.currentRole.trim());
+      formData.append('averageDealSize', applicationForm.averageDealSize);
+      formData.append('averageSalesCycle', applicationForm.averageSalesCycle);
+      formData.append('quotaTarget', applicationForm.quotaTarget);
+      formData.append('quotaAttainment', applicationForm.quotaAttainment);
+      formData.append('largestDealClosed', applicationForm.largestDealClosed);
+      formData.append('territoryType', applicationForm.territoryType);
+      formData.append('candidateMessage', applicationForm.candidateMessage.trim());
+      industriesExperience.forEach((value) => formData.append('industriesExperience', value));
+      salesMotionExperience.forEach((value) => formData.append('salesMotionExperience', value));
+      if (cvFile) {
+        formData.append('cv', cvFile);
+      }
+
       const res = await fetch('/api/applications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: job.id, message }),
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
       });
       if (res.ok) {
         setInterestStatus('interest_expressed');
-        setMessage('');
+        setApplicationForm((current) => ({ ...current, candidateMessage: '' }));
+        setCvFile(null);
+        setFieldErrors({});
+      } else {
+        const data = await res.json().catch(() => null);
+        setSubmitError(data?.error || 'Bewerbung konnte nicht gesendet werden');
       }
-    } catch {} finally { setSubmitting(false); }
+    } catch {
+      setSubmitError('Bewerbung konnte nicht gesendet werden');
+    } finally { setSubmitting(false); }
   };
 
   const handleSaveJob = async () => {
@@ -119,12 +216,9 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                   <div className="flex items-center gap-2 flex-wrap">
                     {job.isFeatured && <Badge>Featured</Badge>}
                     {job.isAgencyManaged && <Badge variant="secondary">Persönlich begleitet</Badge>}
-                    {job.company?.isVerified && <Badge variant="outline"><Shield className="h-3 w-3 mr-1" />Verifiziert</Badge>}
                   </div>
                   <h1 className="text-2xl font-bold mt-2">{job.title}</h1>
-                  <Link href={`/unternehmen/${job.company?.slug}`} className="text-primary hover:underline font-medium">
-                    {job.company?.name}
-                  </Link>
+                  <p className="text-primary font-medium">{getPublicCompanyLabel(job)}</p>
                 </div>
               </div>
 
@@ -214,21 +308,173 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                 </div>
               ) : (
                 <>
-                  <h3 className="font-semibold mb-2">Interesse an dieser Stelle?</h3>
+                  <h3 className="font-semibold mb-2">Bewirb dich auf diese Stelle</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Bekunde dein Interesse – wir prüfen dein Profil und begleiten dich persönlich durch den Prozess.
+                    Reiche deine SaaS-Sales-Bewerbung ein. LinkedIn ist erforderlich, CV und weitere Sales-Daten sind optional, aber hilfreich.
                   </p>
                   {dbUser?.role === 'candidate' && (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
+                      {submitError && (
+                        <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          {submitError}
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">LinkedIn Profil *</label>
+                        <input
+                          value={applicationForm.linkedinUrl}
+                          onChange={(e) => setFieldValue('linkedinUrl', e.target.value)}
+                          placeholder="https://linkedin.com/in/..."
+                          className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        {fieldErrors.linkedinUrl && <p className="text-xs text-destructive">{fieldErrors.linkedinUrl}</p>}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium">CV (PDF)</label>
+                        <div className="rounded-md border border-dashed p-3">
+                          <input
+                            type="file"
+                            accept=".pdf,application/pdf"
+                            onChange={(e) => setCvFile(e.target.files?.[0] || null)}
+                            className="block w-full text-sm"
+                          />
+                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                            <Paperclip className="h-3 w-3" />
+                            {cvFile ? cvFile.name : 'Optional, max. 10 MB'}
+                          </div>
+                        </div>
+                        {fieldErrors.cv && <p className="text-xs text-destructive">{fieldErrors.cv}</p>}
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Jahre Sales Experience</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={applicationForm.yearsOfSalesExperience}
+                            onChange={(e) => setFieldValue('yearsOfSalesExperience', e.target.value)}
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Current Role</label>
+                          <input
+                            value={applicationForm.currentRole}
+                            onChange={(e) => setFieldValue('currentRole', e.target.value)}
+                            placeholder="z.B. Account Executive"
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Average Deal Size</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={applicationForm.averageDealSize}
+                            onChange={(e) => setFieldValue('averageDealSize', e.target.value)}
+                            placeholder="z.B. 25000"
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Average Sales Cycle (Tage)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={applicationForm.averageSalesCycle}
+                            onChange={(e) => setFieldValue('averageSalesCycle', e.target.value)}
+                            placeholder="z.B. 60"
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Quota Target</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={applicationForm.quotaTarget}
+                            onChange={(e) => setFieldValue('quotaTarget', e.target.value)}
+                            placeholder="z.B. 500000"
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Quota Attainment (%)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={999}
+                            value={applicationForm.quotaAttainment}
+                            onChange={(e) => setFieldValue('quotaAttainment', e.target.value)}
+                            placeholder="z.B. 118"
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Largest Deal Closed</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={applicationForm.largestDealClosed}
+                            onChange={(e) => setFieldValue('largestDealClosed', e.target.value)}
+                            placeholder="z.B. 120000"
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium">Territory Type</label>
+                          <select
+                            value={applicationForm.territoryType}
+                            onChange={(e) => setFieldValue('territoryType', e.target.value)}
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          >
+                            <option value="">Auswählen</option>
+                            {TERRITORY_TYPE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>{option}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Industries Experience</label>
+                        <div className="flex flex-wrap gap-2">
+                          {SALES_INDUSTRY_OPTIONS.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => toggleArrayValue(option, setIndustriesExperience)}
+                              className={`rounded-full border px-3 py-1 text-xs transition-colors ${industriesExperience.includes(option) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground'}`}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Sales Motion Experience</label>
+                        <div className="flex flex-wrap gap-2">
+                          {SALES_MOTION_OPTIONS.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => toggleArrayValue(option, setSalesMotionExperience)}
+                              className={`rounded-full border px-3 py-1 text-xs transition-colors ${salesMotionExperience.includes(option) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground'}`}
+                            >
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
+                        value={applicationForm.candidateMessage}
+                        onChange={(e) => setFieldValue('candidateMessage', e.target.value)}
                         placeholder="Optionale Nachricht an uns..."
                         rows={3}
                         className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                       <Button className="w-full" onClick={handleExpressInterest} disabled={submitting}>
-                        {submitting ? 'Wird gesendet...' : 'Interesse bekunden'}
+                        {submitting ? 'Wird gesendet...' : 'Bewerbung absenden'}
                         <Send className="ml-2 h-4 w-4" />
                       </Button>
                     </div>
@@ -259,24 +505,21 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
           </Button>
 
           {/* Company Info */}
-          {job.company && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{job.company.name}</h3>
-                    {job.company.industry && <p className="text-xs text-muted-foreground">{job.company.industry}</p>}
-                  </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <Link href={`/unternehmen/${job.company.slug}`}>
-                  <Button variant="outline" size="sm" className="w-full">Unternehmensprofil ansehen</Button>
-                </Link>
-              </CardContent>
-            </Card>
-          )}
+                <div>
+                  <h3 className="font-semibold">{getPublicCompanyLabel(job)}</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Unternehmensdetails bleiben bis zur Freigabe durch den Recruiter anonymisiert.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Source Info */}
           {job.sourceType && (

@@ -1,17 +1,131 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
+import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
+import { uploadCandidateDocument } from '@/lib/storage/candidate-documents';
+import { applicationSubmissionSchema, deriveSeniorityFromYears } from '@/lib/utils';
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_CV_TYPES = ['application/pdf'];
+
+function getNameParts(displayName: string | null | undefined, email: string) {
+  const fallback = email.split('@')[0] || 'Kandidat';
+  const parts = (displayName || fallback).trim().split(/\s+/).filter(Boolean);
+
+  return {
+    firstName: parts[0] || 'Kandidat',
+    lastName: parts.slice(1).join(' ') || 'Profil',
+  };
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function nullableString(value?: string | null) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
+function parseOptionalNumber(value: FormDataEntryValue | null) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function getStringValue(value: FormDataEntryValue | null) {
+  return typeof value === 'string' ? value : '';
+}
+
+function getStringArray(formData: FormData, key: string) {
+  return uniqueStrings(
+    formData
+      .getAll(key)
+      .map((value) => (typeof value === 'string' ? value : '')),
+  );
+}
+
+async function ensureCandidateProfile(user: NonNullable<Awaited<ReturnType<typeof getAuthUser>>>) {
+  if (user.candidateProfile) {
+    return user.candidateProfile;
+  }
+
+  const { firstName, lastName } = getNameParts(user.displayName, user.email);
+
+  return prisma.candidateProfile.create({
+    data: {
+      userId: user.id,
+      firstName,
+      lastName,
+      email: user.email,
+      remotePreference: [],
+      desiredJobRoles: [],
+      desiredIndustries: [],
+      careerGoals: [],
+      preferredCompanyTypes: [],
+      languages: [],
+      skills: [],
+      industriesExperience: [],
+      onboardingStep: 0,
+      onboardingSource: 'manual',
+    },
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
-    if (user.role !== 'candidate' || !user.candidateProfile) {
-      return NextResponse.json({ success: false, error: 'Nur Kandidaten können Interesse bekunden' }, { status: 403 });
+    if (user.role !== 'candidate') {
+      return NextResponse.json({ success: false, error: 'Nur Kandidaten können sich bewerben' }, { status: 403 });
     }
 
-    const { jobId, message } = await req.json();
-    if (!jobId) return NextResponse.json({ success: false, error: 'Job-ID erforderlich' }, { status: 400 });
+    const formData = await req.formData();
+    const parsed = applicationSubmissionSchema.safeParse({
+      jobId: getStringValue(formData.get('jobId')),
+      linkedinUrl: getStringValue(formData.get('linkedinUrl')),
+      yearsOfSalesExperience: parseOptionalNumber(formData.get('yearsOfSalesExperience')),
+      currentRole: getStringValue(formData.get('currentRole')),
+      averageDealSize: parseOptionalNumber(formData.get('averageDealSize')),
+      averageSalesCycle: parseOptionalNumber(formData.get('averageSalesCycle')),
+      quotaTarget: parseOptionalNumber(formData.get('quotaTarget')),
+      quotaAttainment: parseOptionalNumber(formData.get('quotaAttainment')),
+      industriesExperience: getStringArray(formData, 'industriesExperience'),
+      salesMotionExperience: getStringArray(formData, 'salesMotionExperience'),
+      largestDealClosed: parseOptionalNumber(formData.get('largestDealClosed')),
+      territoryType: getStringValue(formData.get('territoryType')),
+      candidateMessage: getStringValue(formData.get('candidateMessage')),
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json({
+        success: false,
+        error: parsed.error.issues[0]?.message || 'Ungültige Eingaben',
+      }, { status: 400 });
+    }
+
+    const {
+      jobId,
+      linkedinUrl,
+      yearsOfSalesExperience,
+      currentRole,
+      averageDealSize,
+      averageSalesCycle,
+      quotaTarget,
+      quotaAttainment,
+      industriesExperience,
+      salesMotionExperience,
+      largestDealClosed,
+      territoryType,
+      candidateMessage,
+    } = parsed.data;
+
+    const candidateProfile = await ensureCandidateProfile(user);
+    const existingProfile = candidateProfile as any;
 
     const job = await prisma.job.findUnique({ where: { id: jobId } });
     if (!job || job.status !== 'live') {
@@ -19,18 +133,88 @@ export async function POST(req: NextRequest) {
     }
 
     const existing = await prisma.application.findFirst({
-      where: { jobId, candidateId: user.candidateProfile.id },
+      where: { jobId, candidateId: candidateProfile.id },
     });
     if (existing) {
-      return NextResponse.json({ success: false, error: 'Du hast bereits Interesse an diesem Job bekundet' }, { status: 409 });
+      return NextResponse.json({ success: false, error: 'Du hast dich bereits auf diesen Job beworben' }, { status: 409 });
     }
+
+    const cvFile = formData.get('cv');
+    if (cvFile instanceof File && cvFile.size > 0) {
+      if (cvFile.size > MAX_FILE_SIZE_BYTES) {
+        return NextResponse.json({ success: false, error: 'CV ist zu groß (max. 10 MB)' }, { status: 400 });
+      }
+
+      if (!ALLOWED_CV_TYPES.includes(cvFile.type)) {
+        return NextResponse.json({ success: false, error: 'CV muss als PDF hochgeladen werden' }, { status: 400 });
+      }
+    }
+
+    let cvDocument:
+      | {
+        id: string;
+        fileName: string;
+        fileUrl: string;
+      }
+      | null = null;
+
+    if (cvFile instanceof File && cvFile.size > 0) {
+      const uploaded = await uploadCandidateDocument({
+        candidateId: candidateProfile.id,
+        category: 'cv',
+        file: cvFile,
+      });
+
+      cvDocument = await prisma.document.create({
+        data: {
+          candidateId: candidateProfile.id,
+          fileName: uploaded.fileName,
+          fileUrl: uploaded.fileUrl,
+          fileType: uploaded.fileType,
+          fileSizeKb: uploaded.fileSizeKb,
+          category: 'cv',
+        },
+      });
+    }
+
+    const yearsValue = yearsOfSalesExperience ?? existingProfile.yearsOfExperience ?? undefined;
+    const seniority = deriveSeniorityFromYears(yearsValue) ?? existingProfile.seniority ?? null;
+    const quotaHistory = (quotaTarget !== undefined || quotaAttainment !== undefined)
+      ? {
+        target: quotaTarget ?? null,
+        attainment: quotaAttainment ?? null,
+      } as Prisma.InputJsonValue
+      : existingProfile.quotaHistory as Prisma.InputJsonValue | undefined;
+
+    await prisma.candidateProfile.update({
+      where: { id: candidateProfile.id },
+      data: {
+        email: user.email,
+        linkedinUrl,
+        currentRole: nullableString(currentRole) ?? existingProfile.currentRole ?? null,
+        yearsOfExperience: yearsOfSalesExperience ?? existingProfile.yearsOfExperience ?? null,
+        seniority,
+        averageDealSize: averageDealSize ?? existingProfile.averageDealSize ?? null,
+        averageSalesCycle: averageSalesCycle ?? existingProfile.averageSalesCycle ?? null,
+        industriesExperience,
+        salesMotionExperience: salesMotionExperience.join(', '),
+        largestDealClosed: largestDealClosed ?? existingProfile.largestDealClosed ?? null,
+        territorySize: nullableString(territoryType) ?? existingProfile.territorySize ?? null,
+        quotaHistory,
+        cvUrl: cvDocument?.fileUrl ?? existingProfile.cvUrl ?? null,
+        cvFileName: cvDocument?.fileName ?? existingProfile.cvFileName ?? null,
+        cvUploadDate: cvDocument ? new Date() : existingProfile.cvUploadDate ?? null,
+        visibleToRecruiters: true,
+        openToWork: true,
+      },
+    });
 
     const application = await prisma.application.create({
       data: {
         jobId,
-        candidateId: user.candidateProfile.id,
+        candidateId: candidateProfile.id,
         status: 'interest_expressed',
-        candidateMessage: message || null,
+        candidateMessage: nullableString(candidateMessage),
         recommendedByAdmin: false,
       },
     });
@@ -44,9 +228,9 @@ export async function POST(req: NextRequest) {
       await prisma.notification.create({
         data: {
           userId: admin.id,
-          type: 'new_interest',
-          title: 'Neues Interesse',
-          message: `${user.candidateProfile.firstName} ${user.candidateProfile.lastName} hat Interesse an "${job.title}" bekundet.`,
+          type: 'new_application',
+          title: 'Neue Bewerbung',
+          message: `${candidateProfile.firstName} ${candidateProfile.lastName} hat sich auf "${job.title}" beworben.`,
           link: `/dashboard/admin/applications`,
         },
       });
@@ -56,10 +240,10 @@ export async function POST(req: NextRequest) {
     await prisma.auditLog.create({
       data: {
         userId: user.id,
-        action: 'interest_expressed',
+        action: 'application_submitted',
         entity: 'Application',
         entityId: application.id,
-        details: `Interesse an Job "${job.title}" bekundet`,
+        details: `Bewerbung für Job "${job.title}" eingereicht`,
       },
     });
 
@@ -107,11 +291,17 @@ export async function GET(req: NextRequest) {
     if (user.role === 'candidate' && user.candidateProfile) {
       const applications = await prisma.application.findMany({
         where: { candidateId: user.candidateProfile.id },
-        include: { job: { include: { company: { select: { name: true, slug: true, logoUrl: true } } } } },
+        include: { job: { select: publicJobSelect } },
         orderBy: { createdAt: 'desc' },
         take: 50, // Limit to prevent OOM
       });
-      return NextResponse.json({ success: true, data: applications });
+      return NextResponse.json({
+        success: true,
+        data: applications.map((application: (typeof applications)[number]) => ({
+          ...application,
+          job: application.job ? mapJobToPublic(application.job) : null,
+        })),
+      });
     }
 
     if (user.role === 'company' && user.activeCompany) {

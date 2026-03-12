@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
+import { slugify } from '@/lib/utils';
+import { anonymizeJob, JobAnonymizerError } from '@/services/jobAnonymizer';
 
 async function requireAdmin(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -10,6 +12,134 @@ async function requireAdmin(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
     return user?.role === 'admin' ? user : null;
   } catch { return null; }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const admin = await requireAdmin(req);
+    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+
+    const body = await req.json();
+    const {
+      companyId,
+      companyName,
+      title,
+      role,
+      roleCategory,
+      seniority,
+      employmentType,
+      location,
+      country,
+      remoteType,
+      salaryMin,
+      salaryMax,
+      oteMin,
+      oteMax,
+      currency,
+      description,
+      jobDescription,
+      requirements,
+      benefits,
+      sourceUrl,
+      tags,
+    } = body;
+
+    const company = companyId
+      ? await prisma.company.findUnique({ where: { id: companyId } })
+      : companyName
+        ? await prisma.company.findFirst({ where: { name: companyName } })
+        : null;
+
+    if (!company) {
+      return NextResponse.json({ success: false, error: 'Unternehmen nicht gefunden' }, { status: 404 });
+    }
+
+    const resolvedRoleCategory = roleCategory || role;
+    const resolvedTitle = title || role || roleCategory;
+    const resolvedDescription = description || jobDescription;
+
+    if (!resolvedTitle || !resolvedRoleCategory || !resolvedDescription) {
+      return NextResponse.json({ success: false, error: 'Pflichtfelder fehlen' }, { status: 400 });
+    }
+
+    const anonymizedJob = await anonymizeJob({
+      title: resolvedTitle,
+      companyName: company.name,
+      companyWebsite: company.website,
+      companyLinkedInUrl: company.linkedinUrl,
+      companyDescription: company.description,
+      companyIndustry: company.industry,
+      companyStage: company.fundingStage,
+      role: resolvedRoleCategory,
+      location,
+      oteRange: [oteMin, oteMax].some((value) => value !== undefined && value !== null)
+        ? `${oteMin ?? ''}-${oteMax ?? ''} ${currency || 'EUR'}`
+        : null,
+      jobDescription: resolvedDescription,
+      requirements,
+      benefits,
+    });
+
+    const publicTitle = anonymizedJob.titleAnonymized || resolvedTitle;
+    const slug = slugify(publicTitle) + '-' + Date.now().toString(36);
+
+    const job = await prisma.job.create({
+      data: {
+        companyId: company.id,
+        originalCompanyName: company.name,
+        anonymizedCompanyProfile: anonymizedJob.anonymizedCompanyProfile,
+        title: publicTitle,
+        slug,
+        roleCategory: resolvedRoleCategory,
+        seniority: seniority || 'mid',
+        employmentType: employmentType || 'fulltime',
+        location,
+        country,
+        remoteType: remoteType || 'hybrid',
+        salaryMin,
+        salaryMax,
+        oteMin,
+        oteMax,
+        currency: currency || 'EUR',
+        description: anonymizedJob.descriptionAnonymized,
+        descriptionOriginal: anonymizedJob.descriptionOriginal,
+        descriptionAnonymized: anonymizedJob.descriptionAnonymized,
+        requirements: anonymizedJob.requirementsAnonymized,
+        benefits: anonymizedJob.benefitsAnonymized,
+        sourceType: 'agency_managed_job',
+        sourceUrl,
+        applyViaPlattform: true,
+        status: 'pending_review',
+        approvalStatus: 'pending',
+        tags: tags || [],
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: admin.id,
+        action: 'admin_job_created',
+        entity: 'Job',
+        entityId: job.id,
+        details: JSON.stringify({ companyId: company.id, companyName: company.name }),
+      },
+    });
+
+    return NextResponse.json({ success: true, data: job }, { status: 201 });
+  } catch (error) {
+    const anonymizerError = error instanceof JobAnonymizerError ? error : null;
+    if (anonymizerError) {
+      const status =
+        anonymizerError.code === 'CONFIGURATION_ERROR'
+          ? 503
+          : anonymizerError.code === 'VALIDATION_ERROR'
+            ? 422
+            : 502;
+      return NextResponse.json({ success: false, error: anonymizerError.message }, { status });
+    }
+    console.error('Admin job create error:', error);
+    return NextResponse.json({ success: false, error: 'Fehler' }, { status: 500 });
+  }
 }
 
 export async function GET(req: NextRequest) {

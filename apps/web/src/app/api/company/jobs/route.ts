@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isUser, requireCompanyUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
 import { slugify } from '@/lib/utils';
+import { anonymizeJob, JobAnonymizerError } from '@/services/jobAnonymizer';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,17 +22,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Pflichtfelder fehlen' }, { status: 400 });
     }
 
-    const slug = slugify(title) + '-' + slugify(activeCompany.name) + '-' + Date.now().toString(36);
+    const company = await prisma.company.findUnique({
+      where: { id: activeCompany.id },
+    });
+
+    if (!company) {
+      return NextResponse.json({ success: false, error: 'Unternehmen nicht gefunden' }, { status: 404 });
+    }
+
+    const anonymizedJob = await anonymizeJob({
+      title,
+      companyName: company.name,
+      companyWebsite: company.website,
+      companyLinkedInUrl: company.linkedinUrl,
+      companyDescription: company.description,
+      companyIndustry: company.industry,
+      companyStage: company.fundingStage,
+      role: roleCategory,
+      location,
+      oteRange: [oteMin, oteMax].some((value) => value !== undefined && value !== null)
+        ? `${oteMin ?? ''}-${oteMax ?? ''} ${currency || 'EUR'}`
+        : null,
+      jobDescription: description,
+      requirements,
+      benefits,
+    });
+
+    const publicTitle = anonymizedJob.titleAnonymized || title;
+    const slug = slugify(publicTitle) + '-' + Date.now().toString(36);
 
     const job = await prisma.job.create({
       data: {
         companyId: activeCompany.id,
-        title, slug, roleCategory, seniority,
+        originalCompanyName: company.name,
+        anonymizedCompanyProfile: anonymizedJob.anonymizedCompanyProfile,
+        title: publicTitle,
+        slug,
+        roleCategory,
+        seniority,
         employmentType: employmentType || 'fulltime',
         location, country, remoteType: remoteType || 'hybrid',
         salaryMin, salaryMax, oteMin, oteMax,
         currency: currency || 'EUR',
-        description, requirements, benefits,
+        description: anonymizedJob.descriptionAnonymized,
+        descriptionOriginal: anonymizedJob.descriptionOriginal,
+        descriptionAnonymized: anonymizedJob.descriptionAnonymized,
+        requirements: anonymizedJob.requirementsAnonymized,
+        benefits: anonymizedJob.benefitsAnonymized,
         sourceType: 'direct_company_posting',
         sourceUrl,
         applyViaPlattform: true,
@@ -60,6 +97,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: job }, { status: 201 });
   } catch (error) {
+    const anonymizerError: JobAnonymizerError | null = error instanceof JobAnonymizerError ? error : null;
+    if (anonymizerError) {
+      const status =
+        anonymizerError.code === 'CONFIGURATION_ERROR'
+          ? 503
+          : anonymizerError.code === 'VALIDATION_ERROR'
+            ? 422
+            : 502;
+      return NextResponse.json({ success: false, error: anonymizerError.message }, { status });
+    }
     console.error('Job create error:', error);
     return NextResponse.json({ success: false, error: 'Fehler' }, { status: 500 });
   }

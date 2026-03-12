@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
+import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,10 +42,16 @@ export async function GET(req: NextRequest) {
 
     const savedJobs = await prisma.savedJob.findMany({
       where: { userId: user.id },
-      include: { job: { include: { company: { select: { name: true, slug: true, logoUrl: true } } } } },
+      include: { job: { select: publicJobSelect } },
       orderBy: { createdAt: 'desc' },
     });
-    return NextResponse.json({ success: true, data: savedJobs });
+    return NextResponse.json({
+      success: true,
+      data: savedJobs.map((savedJob: (typeof savedJobs)[number]) => ({
+        ...savedJob,
+        job: savedJob.job ? mapJobToPublic(savedJob.job) : null,
+      })),
+    });
   } catch (error) {
     return NextResponse.json({ success: false, error: 'Fehler' }, { status: 500 });
   }

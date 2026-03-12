@@ -7,8 +7,8 @@ export const APP_CONFIG = {
   shortName: 'SCH',
   domain: 'salescareerhub.de',
   url: env?.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  description: 'Die spezialisierte Plattform für Software Sales Karrieren im DACH-Raum',
-  tagline: 'Deine Karriere im Software Sales – transparent, spezialisiert, persönlich.',
+  description: 'Kuratiertes Recruiting für B2B SaaS Sales Rollen im DACH-Raum mit anonymisierten Jobs, recruiter-geführtem Prozess und Sales-Markt-Einblicken.',
+  tagline: 'Kuratiert. Anonymisiert. Persönlich geführt.',
   locale: 'de-DE',
   currency: 'EUR',
   supportedLocales: ['de'] as const,
@@ -128,6 +128,119 @@ export const REMOTE_TYPE_LABELS: Record<RemoteType, string> = {
 export const COUNTRIES = ['Deutschland', 'Österreich', 'Schweiz'] as const;
 export type Country = (typeof COUNTRIES)[number];
 
+export const SALES_SKILL_SUGGESTIONS = [
+  'SaaS Sales',
+  'B2B Sales',
+  'Outbound',
+  'Inbound',
+  'Prospecting',
+  'Lead Qualification',
+  'Cold Calling',
+  'Discovery Calls',
+  'Demo Calls',
+  'Pipeline Management',
+  'Forecasting',
+  'MEDDIC',
+  'MEDDPICC',
+  'SPIN Selling',
+  'Challenger Sale',
+  'Value Selling',
+  'Negotiation',
+  'Closing',
+  'Account Management',
+  'Key Account Management',
+  'Enterprise Sales',
+  'Mid-Market Sales',
+  'Sales Leadership',
+  'Revenue Operations',
+  'CRM Management',
+  'Salesforce',
+  'HubSpot',
+  'Pipedrive',
+  'LinkedIn Sales Navigator',
+  'Customer Success',
+] as const;
+
+export const LANGUAGE_OPTIONS = [
+  'Deutsch',
+  'Englisch',
+  'Französisch',
+  'Spanisch',
+  'Italienisch',
+  'Niederländisch',
+  'Portugiesisch',
+  'Polnisch',
+] as const;
+
+export const LANGUAGE_PROFICIENCY_LEVELS = [
+  'Muttersprachliches Niveau',
+  'Verhandlungssicher',
+  'Fließend',
+  'Konversationssicher',
+  'Grundkenntnisse',
+] as const;
+
+export const SALES_INDUSTRY_OPTIONS = [
+  'SaaS',
+  'AI / Automation',
+  'Cyber Security',
+  'Cloud Infrastructure',
+  'Data & Analytics',
+  'FinTech',
+  'HR Tech',
+  'MarTech',
+  'HealthTech',
+  'DevTools',
+] as const;
+
+export const SALES_MOTION_OPTIONS = [
+  'SMB',
+  'Mid-Market',
+  'Enterprise',
+  'PLG',
+  'Channel',
+  'Full-Cycle',
+] as const;
+
+export const TERRITORY_SIZE_OPTIONS = [
+  'DACH',
+  'Deutschland',
+  'EMEA',
+  'Global',
+  'Regionale Accounts',
+  'Named Accounts',
+] as const;
+
+export const TERRITORY_TYPE_OPTIONS = [
+  'DACH',
+  'EMEA',
+  'Global',
+  'Named Accounts',
+  'Greenfield',
+] as const;
+
+export const CAREER_GOAL_OPTIONS = [
+  'Vom SDR zum AE wechseln',
+  'In Enterprise Sales wachsen',
+  'Mehr Verantwortung übernehmen',
+  'Ein Team führen',
+  'In RevOps wechseln',
+  'In ein internationales Umfeld wechseln',
+  'Besseres OTE erzielen',
+  'Remote-first arbeiten',
+] as const;
+
+export const COMPANY_TYPE_OPTIONS = [
+  'Seed Startup',
+  'Series A Startup',
+  'Series B+ Scale-up',
+  'Mittelstand',
+  'Enterprise',
+  'VC-backed',
+  'Bootstrapped',
+  'Remote-first',
+] as const;
+
 export const SOURCE_TYPES = [
   'direct_company_posting',
   'approved_mirrored_posting',
@@ -180,6 +293,19 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   hired: 'Eingestellt',
   rejected: 'Abgelehnt',
   withdrawn: 'Zurückgezogen',
+};
+
+export const CANDIDATE_APPLICATION_STAGE_LABELS: Record<ApplicationStatus, string> = {
+  interest_expressed: 'Applied',
+  screening: 'Screening',
+  shortlisted: 'Screening',
+  forwarded: 'Intro Sent',
+  interview_1: 'Intro Sent',
+  interview_2: 'Intro Sent',
+  offer: 'Intro Sent',
+  hired: 'Hired',
+  rejected: 'Rejected',
+  withdrawn: 'Rejected',
 };
 
 export const APPROVAL_STATUS = ['pending', 'approved', 'rejected'] as const;
@@ -251,6 +377,38 @@ export const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   interview_tips: 'Interview-Tipps',
   company_insight: 'Unternehmens-Einblick',
   market_report: 'Marktreport',
+};
+
+export const RECRUITING_CALL_TYPES = [
+  'intro_call',
+  'career_advice',
+  'interview_preparation',
+] as const;
+
+export type RecruitingCallType = (typeof RECRUITING_CALL_TYPES)[number];
+
+export const RECRUITING_CALL_TYPE_LABELS: Record<RecruitingCallType, string> = {
+  intro_call: 'Intro Call',
+  career_advice: 'Career Advice',
+  interview_preparation: 'Interview Preparation',
+};
+
+export const INSIGHT_CATEGORIES = [
+  'ote_benchmarks',
+  'quota_trends',
+  'hiring_trends',
+  'industry_growth',
+  'compensation_reports',
+] as const;
+
+export type InsightCategory = (typeof INSIGHT_CATEGORIES)[number];
+
+export const INSIGHT_CATEGORY_LABELS: Record<InsightCategory, string> = {
+  ote_benchmarks: 'OTE Benchmarks',
+  quota_trends: 'Quota Trends',
+  hiring_trends: 'Hiring Trends',
+  industry_growth: 'Industry Growth',
+  compensation_reports: 'Sales Compensation Reports',
 };
 
 export const FILE_UPLOAD = {

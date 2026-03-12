@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { APPLICATION_STATUS_LABELS } from '@/lib/config';
-import { formatRelativeDate } from '@/lib/utils';
+import { formatRelativeDate, getPublicCompanyLabel } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
 import { Briefcase, Building2, Clock, ArrowRight } from 'lucide-react';
 
@@ -62,7 +62,7 @@ export default function CandidateBewerbungenPage() {
                       <Link href={`/jobs/${app.job?.slug}`} className="font-medium hover:text-primary transition-colors line-clamp-1">
                         {app.job?.title || 'Job'}
                       </Link>
-                      <p className="text-sm text-muted-foreground">{app.job?.company?.name || 'Unternehmen'}</p>
+                      <p className="text-sm text-muted-foreground">{getPublicCompanyLabel(app.job)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">

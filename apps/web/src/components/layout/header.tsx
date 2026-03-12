@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { APP_CONFIG } from '@/lib/config';
-import { Menu, X, ChevronDown, LogOut, User, LayoutDashboard, Bell } from 'lucide-react';
+import { Bell, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
 
 const publicNav = [
   { href: '/fuer-unternehmen', label: 'Für Unternehmen' },
@@ -36,6 +36,35 @@ export function Header() {
     }
   };
 
+  const getNotificationLink = () => {
+    if (!dbUser) {
+      return '/login';
+    }
+
+    return `/dashboard/${dbUser.role === 'admin' ? 'admin' : dbUser.role === 'company' ? 'company' : 'candidate'}/benachrichtigungen`;
+  };
+
+  const navItems = !dbUser
+    ? publicNav
+    : dbUser.role === 'admin'
+      ? [
+        { href: '/dashboard/admin', label: 'Mein Bereich' },
+        { href: '/dashboard/admin/users', label: 'Nutzer' },
+        { href: '/dashboard/admin/jobs', label: 'Jobs' },
+      ]
+      : dbUser.role === 'company'
+        ? [
+          { href: '/dashboard/company', label: 'Mein Bereich' },
+          { href: '/dashboard/company/jobs', label: 'Jobs' },
+          { href: '/dashboard/company/profil', label: 'Profil' },
+        ]
+        : [
+          { href: '/dashboard/candidate', label: 'Mein Bereich' },
+          { href: '/jobs', label: 'Jobs' },
+          { href: '/dashboard/candidate/bewerbungen', label: 'Bewerbungen' },
+          { href: '/dashboard/candidate/profil', label: 'Profil' },
+        ];
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
@@ -49,7 +78,7 @@ export function Header() {
             </span>
           </Link>
           <nav className="hidden lg:flex items-center gap-1">
-            {publicNav.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -69,10 +98,10 @@ export function Header() {
               <Link href={getDashboardLink()}>
                 <Button variant="ghost" size="sm">
                   <LayoutDashboard className="mr-1 h-4 w-4" />
-                  <span className="hidden sm:inline">Dashboard</span>
+                  <span className="hidden sm:inline">Mein Bereich</span>
                 </Button>
               </Link>
-              <Link href={`/dashboard/${dbUser.role === 'admin' ? 'admin' : dbUser.role === 'company' ? 'company' : 'candidate'}/benachrichtigungen`}>
+              <Link href={getNotificationLink()}>
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="h-4 w-4" />
                   {unreadCount > 0 && (
@@ -110,7 +139,7 @@ export function Header() {
       {mobileOpen && (
         <div className="lg:hidden border-t bg-background">
           <nav className="container py-4 flex flex-col gap-1">
-            {publicNav.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

@@ -1,52 +1,197 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
+import { deriveSeniorityFromYears } from '@/lib/utils';
+import { deleteCandidateDocument, uploadCandidateDocument } from '@/lib/storage/candidate-documents';
 
-// File type validation - moved outside function to avoid recreation
 const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-const MAX_FILE_SIZE_KB = 10 * 1024; // 10MB
+const MAX_FILE_SIZE_KB = 10 * 1024;
+
+function getNameParts(displayName: string | null | undefined, email: string) {
+  const fallback = email.split('@')[0] || 'Kandidat';
+  const parts = (displayName || fallback).trim().split(/\s+/).filter(Boolean);
+
+  return {
+    firstName: parts[0] || 'Kandidat',
+    lastName: parts.slice(1).join(' ') || 'Profil',
+  };
+}
+
+function buildMockCvExtraction(fileName: string, displayName: string | null | undefined, email: string) {
+  const lowerFileName = fileName.toLowerCase();
+  const { firstName, lastName } = getNameParts(displayName, email);
+  const currentRole = lowerFileName.includes('sdr')
+    ? 'SDR'
+    : lowerFileName.includes('bdr')
+      ? 'BDR'
+      : lowerFileName.includes('manager')
+        ? 'Sales Manager'
+        : lowerFileName.includes('enterprise')
+          ? 'Enterprise AE'
+          : 'Account Executive';
+  const yearsOfExperience = lowerFileName.includes('junior')
+    ? 1
+    : lowerFileName.includes('lead')
+      ? 10
+      : lowerFileName.includes('senior')
+        ? 7
+        : 4;
+  const desiredJobRoles = currentRole === 'SDR' || currentRole === 'BDR'
+    ? ['Account Executive', 'Mid-Market AE']
+    : [currentRole, 'Enterprise AE'];
+  const salaryExpectationBase = currentRole === 'SDR' || currentRole === 'BDR' ? 45000 : 80000;
+  const salaryExpectationOte = currentRole === 'SDR' || currentRole === 'BDR' ? 65000 : 140000;
+
+  return {
+    firstName,
+    lastName,
+    email,
+    currentRole,
+    targetRole: desiredJobRoles[0],
+    desiredJobRoles,
+    desiredIndustries: ['SaaS'],
+    careerGoals: ['Mehr Verantwortung übernehmen'],
+    preferredCompanyTypes: ['Series B+ Scale-up'],
+    remotePreference: ['remote', 'hybrid'],
+    yearsOfExperience,
+    seniority: deriveSeniorityFromYears(yearsOfExperience),
+    skills: ['SaaS Sales', 'B2B Sales', 'Pipeline Management', 'Negotiation', 'Closing'],
+    languages: ['Deutsch', 'Englisch'],
+    languageProficiencies: [
+      { language: 'Deutsch', level: 'Muttersprachliches Niveau' },
+      { language: 'Englisch', level: 'Verhandlungssicher' },
+    ],
+    country: 'Deutschland',
+    location: '',
+    salaryExpectationBase,
+    salaryExpectationOte,
+    salaryExpectationCurrency: 'EUR',
+    onboardingSource: 'cv' as const,
+  };
+}
+
+async function getAuthUser(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
+
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  try {
+    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
+
+    return prisma.user.findUnique({
+      where: { firebaseUid: decoded.uid },
+      include: { candidateProfile: true },
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function ensureCandidateProfile(user: NonNullable<Awaited<ReturnType<typeof getAuthUser>>>) {
+  if (user.candidateProfile) {
+    return user.candidateProfile;
+  }
+
+  const { firstName, lastName } = getNameParts(user.displayName, user.email);
+
+  return prisma.candidateProfile.create({
+    data: {
+      userId: user.id,
+      firstName,
+      lastName,
+      email: user.email,
+      remotePreference: [],
+      desiredJobRoles: [],
+      desiredIndustries: [],
+      careerGoals: [],
+      preferredCompanyTypes: [],
+      languages: [],
+      skills: [],
+      onboardingStep: 0,
+      onboardingSource: 'cv',
+    },
+  });
+}
+
+function getObjectPathFromUrl(fileUrl: string) {
+  const googleStorageMatch = fileUrl.match(/https:\/\/storage\.googleapis\.com\/[^/]+\/(.+)/i);
+
+  if (googleStorageMatch?.[1]) {
+    return decodeURIComponent(googleStorageMatch[1]);
+  }
+
+  return null;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const user = await getAuthUser(req);
+
+    if (!user || user.role !== 'candidate') {
       return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
     }
-    
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    
-    // Optimized user query - only select needed fields
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: decoded.uid },
-      select: { id: true, candidateProfile: { select: { id: true } } },
-    });
 
-    if (!user) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
+    const candidateProfile = await ensureCandidateProfile(user);
+    const contentType = req.headers.get('content-type') || '';
+    let fileName = '';
+    let fileUrl = '';
+    let fileType = '';
+    let fileSizeKb = 0;
+    let category = 'cv';
 
-    const body = await req.json();
-    const { fileName, fileUrl, fileType, fileSizeKb, category } = body;
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await req.formData();
+      const file = formData.get('file');
+      category = typeof formData.get('category') === 'string' ? String(formData.get('category')) : 'cv';
+
+      if (!(file instanceof File)) {
+        return NextResponse.json({ success: false, error: 'Datei fehlt' }, { status: 400 });
+      }
+
+      if (file.size > MAX_FILE_SIZE_KB * 1024) {
+        return NextResponse.json({ success: false, error: 'Datei ist zu groß (max. 10 MB)' }, { status: 400 });
+      }
+
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        return NextResponse.json({ success: false, error: 'Dateityp nicht erlaubt' }, { status: 400 });
+      }
+
+      const uploaded = await uploadCandidateDocument({
+        candidateId: candidateProfile.id,
+        category,
+        file,
+      });
+
+      fileName = uploaded.fileName;
+      fileUrl = uploaded.fileUrl;
+      fileType = uploaded.fileType;
+      fileSizeKb = uploaded.fileSizeKb;
+    } else {
+      const body = await req.json();
+      fileName = body.fileName;
+      fileUrl = body.fileUrl;
+      fileType = body.fileType;
+      fileSizeKb = body.fileSizeKb || 0;
+      category = body.category || 'cv';
+    }
 
     if (!fileName || !fileUrl || !fileType) {
       return NextResponse.json({ success: false, error: 'Dateiinformationen fehlen' }, { status: 400 });
     }
 
-    // File size validation
     if (fileSizeKb && fileSizeKb > MAX_FILE_SIZE_KB) {
       return NextResponse.json({ success: false, error: 'Datei ist zu groß (max. 10 MB)' }, { status: 400 });
     }
 
-    // File type validation
     if (!ALLOWED_TYPES.includes(fileType)) {
       return NextResponse.json({ success: false, error: 'Dateityp nicht erlaubt' }, { status: 400 });
     }
 
-    if (!user.candidateProfile) {
-      return NextResponse.json({ success: false, error: 'Kandidatenprofil erforderlich' }, { status: 400 });
-    }
-
     const document = await prisma.document.create({
       data: {
-        candidateId: user.candidateProfile.id,
+        candidateId: candidateProfile.id,
         fileName,
         fileUrl,
         fileType,
@@ -55,15 +200,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // If category is 'cv', also update the candidateProfile.cvUrl
+    const extraction = category === 'cv'
+      ? buildMockCvExtraction(fileName, user.displayName, user.email)
+      : null;
+
     if (category === 'cv') {
       await prisma.candidateProfile.update({
-        where: { id: user.candidateProfile.id },
-        data: { cvUrl: fileUrl },
+        where: { id: candidateProfile.id },
+        data: {
+          cvUrl: fileUrl,
+          cvFileName: fileName,
+          cvUploadDate: new Date(),
+          onboardingStep: 1,
+          onboardingSource: 'cv',
+        },
       });
     }
 
-    // DSGVO Audit Log
     await prisma.auditLog.create({
       data: {
         userId: user.id,
@@ -74,7 +227,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, data: document }, { status: 201 });
+    return NextResponse.json({ success: true, data: document, extraction }, { status: 201 });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ success: false, error: 'Fehler beim Upload' }, { status: 500 });
@@ -83,15 +236,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
-    }
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: decoded.uid },
-      include: { candidateProfile: true },
-    });
+    const user = await getAuthUser(req);
 
     if (!user?.candidateProfile) {
       return NextResponse.json({ success: true, data: [] });
@@ -103,40 +248,51 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: documents });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Fehler' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
-    }
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: decoded.uid },
-      include: { candidateProfile: true },
-    });
+    const user = await getAuthUser(req);
 
     if (!user?.candidateProfile) {
       return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
     }
 
     const { documentId } = await req.json();
-    if (!documentId) return NextResponse.json({ success: false, error: 'Dokument-ID erforderlich' }, { status: 400 });
+
+    if (!documentId) {
+      return NextResponse.json({ success: false, error: 'Dokument-ID erforderlich' }, { status: 400 });
+    }
 
     const doc = await prisma.document.findFirst({
       where: { id: documentId, candidateId: user.candidateProfile.id },
     });
-    if (!doc) return NextResponse.json({ success: false, error: 'Dokument nicht gefunden' }, { status: 404 });
+
+    if (!doc) {
+      return NextResponse.json({ success: false, error: 'Dokument nicht gefunden' }, { status: 404 });
+    }
 
     await prisma.document.delete({ where: { id: documentId } });
 
-    // TODO: Delete file from Firebase Storage
+    const objectPath = getObjectPathFromUrl(doc.fileUrl);
+    if (objectPath) {
+      await deleteCandidateDocument(objectPath).catch(() => undefined);
+    }
 
-    // DSGVO Audit
+    if (doc.category === 'cv' && user.candidateProfile.cvUrl === doc.fileUrl) {
+      await prisma.candidateProfile.update({
+        where: { id: user.candidateProfile.id },
+        data: {
+          cvUrl: null,
+          cvFileName: null,
+          cvUploadDate: null,
+        },
+      });
+    }
+
     await prisma.auditLog.create({
       data: {
         userId: user.id,
@@ -148,7 +304,7 @@ export async function DELETE(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Fehler' }, { status: 500 });
   }
 }
