@@ -200,11 +200,57 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const extraction = category === 'cv'
-      ? buildMockCvExtraction(fileName, user.displayName, user.email)
-      : null;
+    let extraction = null;
 
     if (category === 'cv') {
+      // Try real AI extraction first, fall back to mock
+      try {
+        if (contentType.includes('multipart/form-data')) {
+          const formDataRetry = await req.clone().formData().catch(() => null);
+          const fileObj = formDataRetry?.get('file');
+          if (fileObj instanceof File) {
+            const { extractTextFromPdf } = await import('@/lib/resume/pdf-parser');
+            const { normalizeExtractedResume } = await import('@/lib/resume/normalization');
+            const { getResumeProvider } = await import('@/lib/resume/providers/factory');
+
+            const arrayBuffer = await fileObj.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const rawText = await extractTextFromPdf(buffer);
+            const provider = getResumeProvider();
+            const result = await provider.extractResumeData({ text: rawText, requestId: `upload-${Date.now()}` });
+            const { profile } = normalizeExtractedResume(result.raw);
+
+            const v = (f: any) => f?.value;
+            const { firstName: fn, lastName: ln } = getNameParts(user.displayName, user.email);
+            extraction = {
+              firstName: fn,
+              lastName: ln,
+              email: v(profile.email) || user.email,
+              phone: v(profile.telefon) || '',
+              linkedinUrl: v(profile.linkedinUrl) || '',
+              location: v(profile.standort) || '',
+              currentRole: v(profile.aktuelleRolle) || '',
+              yearsOfExperience: v(profile.berufserfahrungJahre) ?? 0,
+              skills: v(profile.skills) || [],
+              berufsstationen: v(profile.berufsstationen) || [],
+              sprachen: v(profile.sprachen) || [],
+              seniority: v(profile.seniority) || deriveSeniorityFromYears(v(profile.berufserfahrungJahre)),
+              salaryExpectationBase: v(profile.gehaltBaseJahr) || undefined,
+              salaryExpectationOte: v(profile.gehaltOTEJahr) || undefined,
+              noticePeriod: v(profile.kuendigungsfrist) || '',
+              onboardingSource: 'cv' as const,
+            };
+          }
+        }
+      } catch (extractionError) {
+        console.warn('Real CV extraction failed, using mock:', extractionError);
+        extraction = buildMockCvExtraction(fileName, user.displayName, user.email);
+      }
+
+      if (!extraction) {
+        extraction = buildMockCvExtraction(fileName, user.displayName, user.email);
+      }
+
       await prisma.candidateProfile.update({
         where: { id: candidateProfile.id },
         data: {

@@ -4,11 +4,14 @@ import React from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Header } from '@/components/layout/header';
 import { DashboardSidebar } from '@/components/layout/dashboard-sidebar';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { dbUser, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isOnboarding = pathname?.startsWith('/dashboard/onboarding');
 
   if (loading) {
     return (
@@ -21,6 +24,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!dbUser) {
     router.push('/login');
     return null;
+  }
+
+  if (isOnboarding) {
+    return <>{children}</>;
   }
 
   return (

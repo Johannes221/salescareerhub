@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { CandidateOnboardingFlow } from '@/components/candidate-onboarding-flow';
+import { CandidateOnboardingWizard } from '@/components/candidate-onboarding-wizard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getIdToken } from '@/lib/auth/client';
@@ -106,7 +106,7 @@ export default function CandidateProfilePage() {
 
   return (
     <div className="space-y-6">
-      <CandidateOnboardingFlow entryPoint="profile" />
+      <CandidateOnboardingWizard entryPoint="profile" />
 
       <Card>
         <CardHeader>

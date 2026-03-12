@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { loginWithApple, loginWithGoogle, registerWithEmail, syncCurrentUser } from '@/lib/auth/client';
+import { loginWithApple, loginWithEmail, loginWithGoogle, registerWithEmail, syncCurrentUser } from '@/lib/auth/client';
 import { APP_CONFIG } from '@/lib/config';
 import { Apple, Building2, Chrome, UserPlus, AlertCircle, Users } from 'lucide-react';
 
@@ -49,7 +49,17 @@ export default function RegisterPage() {
       await syncUser();
     } catch (err: any) {
       if (err?.code === 'auth/email-already-in-use') {
-        setError('Diese E-Mail-Adresse wird bereits verwendet.');
+        try {
+          await loginWithEmail(email, password);
+          await syncUser();
+          return;
+        } catch (loginErr: any) {
+          if (loginErr?.code === 'auth/invalid-credential') {
+            setError('Diese E-Mail ist bereits registriert. Bitte melde dich an oder verwende ein anderes Passwort.');
+          } else {
+            setError('Diese E-Mail ist bereits registriert. Bitte melde dich über die Login-Seite an.');
+          }
+        }
       } else if (err?.code === 'auth/weak-password') {
         setError('Das Passwort ist zu schwach.');
       } else {
