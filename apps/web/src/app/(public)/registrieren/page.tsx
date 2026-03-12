@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { getIdToken, loginWithApple, loginWithGoogle, registerWithEmail } from '@/lib/auth/client';
+import { loginWithApple, loginWithGoogle, registerWithEmail, syncCurrentUser } from '@/lib/auth/client';
 import { APP_CONFIG } from '@/lib/config';
 import { Apple, Building2, Chrome, UserPlus, AlertCircle, Users } from 'lucide-react';
 
@@ -23,19 +23,10 @@ export default function RegisterPage() {
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
 
   const syncUser = async (displayName?: string | null) => {
-    const token = await getIdToken();
-    if (!token) throw new Error('Authentifizierung fehlgeschlagen.');
-
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ role, displayName: displayName || undefined }),
+    await syncCurrentUser({
+      role,
+      displayName: displayName || undefined,
     });
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      throw new Error(data?.error || 'Registrierung fehlgeschlagen.');
-    }
 
     await refreshUser();
     router.push('/dashboard');
@@ -62,7 +53,7 @@ export default function RegisterPage() {
       } else if (err?.code === 'auth/weak-password') {
         setError('Das Passwort ist zu schwach.');
       } else {
-        setError('Registrierung fehlgeschlagen. Bitte versuche es erneut.');
+        setError(typeof err?.message === 'string' ? err.message : 'Registrierung fehlgeschlagen. Bitte versuche es erneut.');
       }
     } finally {
       setLoading(false);
@@ -83,7 +74,7 @@ export default function RegisterPage() {
       } else if (err?.code === 'auth/operation-not-allowed') {
         setError(`Der ${provider === 'google' ? 'Google' : 'Apple'}-Login ist in Firebase noch nicht aktiviert.`);
       } else {
-        setError(`${provider === 'google' ? 'Google' : 'Apple'}-Registrierung fehlgeschlagen. Bitte versuche es erneut.`);
+        setError(typeof err?.message === 'string' ? err.message : `${provider === 'google' ? 'Google' : 'Apple'}-Registrierung fehlgeschlagen. Bitte versuche es erneut.`);
       }
     } finally {
       setSocialLoading(null);
@@ -131,15 +122,15 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">E-Mail</label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@beispiel.de" required />
+              <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@beispiel.de" required />
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">Passwort</label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mind. 8 Zeichen" required />
+              <Input id="password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mind. 8 Zeichen" required />
             </div>
             <div className="space-y-2">
               <label htmlFor="confirmPassword" className="text-sm font-medium">Passwort bestätigen</label>
-              <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Passwort wiederholen" required />
+              <Input id="confirmPassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Passwort wiederholen" required />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

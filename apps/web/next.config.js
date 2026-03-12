@@ -39,6 +39,29 @@ const nextConfig = {
     workerThreads: false,
     cpus: 1,
   },
+
+  async headers() {
+    return [
+      {
+        source: '/login',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+      {
+        source: '/registrieren',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

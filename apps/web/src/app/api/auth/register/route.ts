@@ -13,6 +13,12 @@ import { prisma } from '@/lib/db';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+function getUnknownPrismaField(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  const match = message.match(/Unknown (?:argument|field) `([^`]+)`/);
+  return match?.[1] ?? null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -64,22 +70,52 @@ export async function POST(req: NextRequest) {
       onboardingCompleted: existingUser?.onboardingCompleted ?? role === ROLES.ADMIN,
     };
 
-    const include = {
+    let include: {
+      candidateProfile?: true;
+      company?: true;
+      managedCompany?: true;
+    } = {
       candidateProfile: true,
       company: true,
       managedCompany: true,
     };
 
-    const userRecord = existingUser
-      ? await prisma.user.update({
-          where: { id: existingUser.id },
-          data: baseData,
-          include,
-        })
-      : await prisma.user.create({
-          data: baseData,
-          include,
-        });
+    let userData: typeof baseData & Record<string, unknown> = { ...baseData };
+    let userRecord: any = null;
+
+    for (let attempt = 0; attempt < 7; attempt += 1) {
+      try {
+        userRecord = existingUser
+          ? await (prisma.user as any).update({
+              where: { id: existingUser.id },
+              data: userData,
+              include,
+            })
+          : await (prisma.user as any).create({
+              data: userData,
+              include,
+            });
+        break;
+      } catch (error) {
+        const unknownField = getUnknownPrismaField(error);
+
+        if (unknownField === 'managedCompany' && include.managedCompany) {
+          delete include.managedCompany;
+          continue;
+        }
+
+        if (unknownField && unknownField in userData) {
+          delete userData[unknownField];
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    if (!userRecord) {
+      throw new Error('Benutzer konnte nicht synchronisiert werden.');
+    }
 
     if (!existingUser) {
       try {
@@ -106,7 +142,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: adminError }, { status: 500 });
     }
 
-    if (prismaMessage?.includes('Unknown argument')) {
+    if (prismaMessage?.includes('Unknown argument') || prismaMessage?.includes('Unknown field')) {
       return NextResponse.json(
         { success: false, error: 'Prisma Client auf dem Server ist veraltet. Render muss neu bauen/deployen.' },
         { status: 500 },

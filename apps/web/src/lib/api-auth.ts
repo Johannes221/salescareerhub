@@ -1,27 +1,78 @@
-import type { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyIdToken, verifySessionCookie } from '@/lib/auth/server';
-import { AUTH_SESSION_COOKIE } from '@/lib/auth/shared';
-import { COMPANY_MEMBER_ROLES, ROLES, type CompanyMemberRole, type Role } from '@/lib/config';
-import { prisma } from '@/lib/db';
+import { verifyIdToken, verifySessionCookie } from './auth/server';
+import { AUTH_SESSION_COOKIE } from './auth/shared';
+import { COMPANY_MEMBER_ROLES, ROLES, type CompanyMemberRole, type Role } from './config';
+import { prisma } from './db';
 
 const authUserInclude = {
   candidateProfile: true,
   company: true,
   managedCompany: true,
-} satisfies Prisma.UserInclude;
+};
 
-type BaseAuthUser = Prisma.UserGetPayload<{
-  include: typeof authUserInclude;
-}>;
+type BaseAuthUser = {
+  id: string;
+  firebaseUid: string;
+  email: string;
+  role: string;
+  displayName?: string | null;
+  companyRole?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  candidateProfile?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string | null;
+    linkedinUrl?: string | null;
+    location?: string | null;
+    country?: string | null;
+    currentRole?: string | null;
+    targetRole?: string | null;
+    seniority?: string | null;
+    yearsOfExperience?: number | null;
+    skills: string[];
+    shortBio?: string | null;
+    createdAt: Date;
+  } | null;
+  company?: {
+    id: string;
+    name: string;
+    slug?: string;
+    website?: string | null;
+    country?: string | null;
+    city?: string | null;
+    industry?: string | null;
+    createdAt: Date;
+  } | null;
+  managedCompany?: {
+    id: string;
+    name: string;
+    slug?: string;
+    website?: string | null;
+    country?: string | null;
+    city?: string | null;
+    industry?: string | null;
+    createdAt: Date;
+  } | null;
+};
 
 export type AuthUser = BaseAuthUser & {
   activeCompany: BaseAuthUser['company'] | BaseAuthUser['managedCompany'] | null;
   effectiveCompanyRole?: CompanyMemberRole;
 };
 
+function getUnknownPrismaField(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+  const match = message.match(/Unknown (?:argument|field) `([^`]+)`/);
+  return match?.[1] ?? null;
+}
+
 function augmentAuthUser(user: BaseAuthUser): AuthUser {
-  const activeCompany = user.company ?? user.managedCompany ?? null;
+  const managedCompany = user.managedCompany ?? null;
+  const activeCompany = user.company ?? managedCompany ?? null;
   const requestedCompanyRole = user.companyRole as CompanyMemberRole | null;
 
   return {
@@ -51,6 +102,36 @@ async function verifyRequest(req: NextRequest) {
   return verifySessionCookie(sessionCookie);
 }
 
+async function findAuthUserByFirebaseUid(firebaseUid: string): Promise<BaseAuthUser | null> {
+  const include: {
+    candidateProfile?: true;
+    company?: true;
+    managedCompany?: true;
+  } = {
+    candidateProfile: true,
+    company: true,
+    managedCompany: true,
+  };
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await (prisma.user as any).findUnique({
+        where: { firebaseUid },
+        include,
+      }) as BaseAuthUser | null;
+    } catch (error) {
+      if (getUnknownPrismaField(error) === 'managedCompany' && include.managedCompany) {
+        delete include.managedCompany;
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  return null;
+}
+
 export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
   try {
     const decoded = await verifyRequest(req);
@@ -59,10 +140,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
       return null;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: decoded.uid },
-      include: authUserInclude,
-    });
+    const user = await findAuthUserByFirebaseUid(decoded.uid);
 
     if (!user?.isActive) {
       return null;

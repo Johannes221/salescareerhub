@@ -27,22 +27,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchDbUser = async () => {
     try {
-      const { getIdToken } = await import('@/lib/auth/client');
-      const token = await getIdToken();
-      if (!token) {
+      const { establishServerSession, getIdToken } = await import('@/lib/auth/client');
+      const fetchCurrentUser = async () => fetch('/api/auth/me', { credentials: 'include' });
+
+      let res = await fetchCurrentUser();
+
+      if (res.status === 401) {
+        const token = await getIdToken();
+        if (!token) {
+          setDbUser(null);
+          return;
+        }
+
+        await establishServerSession(token);
+        res = await fetchCurrentUser();
+      }
+
+      if (!res.ok) {
         setDbUser(null);
         return;
       }
-      const res = await fetch('/api/auth/me', {
-        credentials: 'include',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDbUser(data.data);
-      } else {
-        setDbUser(null);
-      }
+
+      const data = await res.json();
+      setDbUser(data.data);
     } catch {
       setDbUser(null);
     }
