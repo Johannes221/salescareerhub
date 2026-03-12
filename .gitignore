@@ -8,3 +8,5 @@ dist
 *.tsbuildinfo
 coverage
 .vercel
+*.json
+sales-career-hub-firebase-adminsdk-fbsvc-4685498f1e.json

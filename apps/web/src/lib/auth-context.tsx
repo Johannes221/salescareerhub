@@ -33,10 +33,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
-      let res = await fetchCurrentUser();
+      const token = await getIdToken();
+      let res = await fetchCurrentUser(token);
 
       if (res.status === 401) {
-        const token = await getIdToken();
         if (!token) {
           setDbUser(null);
           return;

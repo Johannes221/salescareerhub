@@ -19,6 +19,22 @@ function getUnknownPrismaField(error: unknown) {
   return match?.[1] ?? null;
 }
 
+function getPrismaConnectionErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : '';
+
+  if (
+    message.includes('Server selection timeout') ||
+    message.includes('No available servers') ||
+    message.includes('ReplicaSetNoPrimary') ||
+    message.includes('received fatal alert') ||
+    message.includes('Raw query failed')
+  ) {
+    return 'Die Datenbankverbindung auf dem Server ist fehlgeschlagen. Bitte prüfe DATABASE_URL in Render sowie MongoDB Atlas Network Access und TLS-Einstellungen.';
+  }
+
+  return null;
+}
+
 async function findExistingUser(firebaseUid: string, email: string) {
   try {
     return await prisma.user.findUnique({ where: { firebaseUid } });
@@ -148,10 +164,15 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Registration error:', error);
     const adminError = getFirebaseAdminErrorMessage(error);
+    const prismaConnectionError = getPrismaConnectionErrorMessage(error);
     const prismaMessage = error instanceof Error ? error.message : null;
 
     if (adminError) {
       return NextResponse.json({ success: false, error: adminError }, { status: 500 });
+    }
+
+    if (prismaConnectionError) {
+      return NextResponse.json({ success: false, error: prismaConnectionError }, { status: 503 });
     }
 
     if (prismaMessage?.includes('Unknown argument') || prismaMessage?.includes('Unknown field')) {
