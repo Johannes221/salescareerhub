@@ -91,7 +91,7 @@ export default function CandidateDashboard() {
         if (!token) return;
         const [dashRes, jobsRes] = await Promise.all([
           fetch('/api/candidate/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('/api/jobs?pageSize=5&sort=newest'),
+          fetch('/api/jobs?pageSize=5&sort=newest', { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         if (dashRes.ok) {
           const p = await dashRes.json();
@@ -272,6 +272,11 @@ export default function CandidateDashboard() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
+                      {typeof job.matchScore === 'number' && (
+                        <p className="text-xs font-semibold text-emerald-700">
+                          Match {job.matchScore}%
+                        </p>
+                      )}
                       {(job.oteMin || job.oteMax) && (
                         <p className="text-sm font-semibold text-primary">
                           {formatSalaryRange(job.oteMin, job.oteMax)}
@@ -292,6 +297,9 @@ export default function CandidateDashboard() {
                         </span>
                       ))}
                     </div>
+                  )}
+                  {job.matchReasons?.length > 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">{job.matchReasons[0]}</p>
                   )}
                 </div>
               </Link>
@@ -345,6 +353,18 @@ export default function CandidateDashboard() {
                     {getPublicCompanyLabel(app.job)}
                     {app.createdAt && ` · ${formatRelativeDate(app.createdAt)}`}
                   </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    {typeof app.fitScore === 'number' && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        Match {app.fitScore}%
+                      </span>
+                    )}
+                    {app.nextStep && (
+                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {app.nextStep}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <Link
                   href={`/jobs/${app.job?.slug || ''}`}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { buildApplicationJourney } from '@/lib/candidate-journey';
 import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
 import { buildDailySeries, getAnalyticsWindowStart } from '@/lib/analytics';
@@ -124,6 +125,13 @@ export async function GET(req: NextRequest) {
       applications: applications.map((application: (typeof applications)[number]) => ({
         ...application,
         job: application.job ? mapJobToPublic(application.job) : null,
+        ...buildApplicationJourney(
+          {
+            ...application,
+            job: application.job ? mapJobToPublic(application.job) : null,
+          },
+          user.candidateProfile,
+        ),
       })),
       recruitingCalls: recruitingCalls.map((call) => ({
         ...call,

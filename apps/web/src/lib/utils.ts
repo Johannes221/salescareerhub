@@ -207,6 +207,28 @@ const optionalNumber = () => z.preprocess(
 
 const stringArraySchema = () => z.array(z.string().trim().min(1));
 
+const normalizeUrlInput = (value: unknown) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const normalized = value.trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(normalized)) {
+    return normalized;
+  }
+
+  if (/^[\w.-]+\.[a-z]{2,}(?:[/?#].*)?$/i.test(normalized)) {
+    return `https://${normalized}`;
+  }
+
+  return normalized;
+};
+
 export const languageProficiencySchema = z.object({
   language: z.string().trim().min(1, 'Sprache ist erforderlich'),
   level: z.string().trim().min(1, 'Sprachniveau ist erforderlich'),
@@ -250,7 +272,10 @@ export const candidateProfileSchema = z.object({
   lastName: z.string().trim().min(1, 'Nachname ist erforderlich'),
   email: emailSchema,
   phone: z.string().optional(),
-  linkedinUrl: z.string().url('Ungültige URL').optional().or(z.literal('')),
+  linkedinUrl: z.preprocess(
+    normalizeUrlInput,
+    z.string().url('Ungültige URL').optional().or(z.literal('')),
+  ),
   location: z.string().trim().min(1, 'Standort ist erforderlich'),
   country: z.string().trim().min(1, 'Land ist erforderlich'),
   remotePreference: stringArraySchema().min(1, 'Bitte wähle mindestens eine Arbeitspräferenz aus'),

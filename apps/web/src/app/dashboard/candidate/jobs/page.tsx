@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MultiSelectFilter, ActiveFilterChips } from '@/components/ui/multi-select-filter';
-import { JOB_ROLES, COUNTRIES, REMOTE_TYPE_LABELS, SENIORITY_LABELS } from '@/lib/config';
+import { COMPANY_SIZES, COUNTRIES, JOB_ROLES, REMOTE_TYPE_LABELS, SALES_INDUSTRY_OPTIONS, SENIORITY_LABELS } from '@/lib/config';
 import { formatSalaryRange, formatRelativeDate, getPublicCompanyLabel } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
 import { getIdToken } from '@/lib/auth/client';
@@ -13,26 +13,36 @@ import {
   Search,
   MapPin,
   Briefcase,
-  Building2,
   X,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
   Heart,
   SlidersHorizontal,
-  Bookmark,
 } from 'lucide-react';
 
 const ROLE_OPTIONS = JOB_ROLES.map((r) => ({ value: r, label: r }));
 const COUNTRY_OPTIONS = COUNTRIES.map((c) => ({ value: c, label: c }));
 const REMOTE_OPTIONS = Object.entries(REMOTE_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }));
 const SENIORITY_OPTIONS = Object.entries(SENIORITY_LABELS).map(([k, v]) => ({ value: k, label: v }));
+const INDUSTRY_OPTIONS = SALES_INDUSTRY_OPTIONS.map((industry) => ({ value: industry, label: industry }));
+const COMPANY_TYPE_OPTIONS = [
+  { value: 'startup', label: 'Startup' },
+  { value: 'scaleup', label: 'Scale-up' },
+  { value: 'mittelstand', label: 'Mittelstand' },
+  { value: 'enterprise', label: 'Enterprise' },
+];
+const COMPANY_SIZE_OPTIONS = COMPANY_SIZES.map((size) => ({ value: size, label: size }));
 
 const FILTER_LABEL_MAP: Record<string, Record<string, string>> = {
   roles: Object.fromEntries(JOB_ROLES.map((r) => [r, r])),
   countries: Object.fromEntries(COUNTRIES.map((c) => [c, c])),
   workModels: REMOTE_TYPE_LABELS as Record<string, string>,
   seniorityLevels: SENIORITY_LABELS as Record<string, string>,
+  industries: Object.fromEntries(SALES_INDUSTRY_OPTIONS.map((industry) => [industry, industry])),
+  companyTypes: Object.fromEntries(COMPANY_TYPE_OPTIONS.map((option) => [option.value, option.label])),
+  companySizes: Object.fromEntries(COMPANY_SIZES.map((size) => [size, size])),
+  locations: {},
 };
 
 export default function CandidateJobsPage() {
@@ -45,7 +55,11 @@ export default function CandidateJobsPage() {
     countries: [] as string[],
     workModels: [] as string[],
     seniorityLevels: [] as string[],
+    industries: [] as string[],
+    companyTypes: [] as string[],
+    companySizes: [] as string[],
   });
+  const [locationFilter, setLocationFilter] = useState('');
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -60,14 +74,21 @@ export default function CandidateJobsPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
+      if (locationFilter) params.set('location', locationFilter);
       if (filters.roles.length) params.set('roleCategory', filters.roles.join(','));
       if (filters.countries.length) params.set('country', filters.countries.join(','));
       if (filters.workModels.length) params.set('remoteType', filters.workModels.join(','));
       if (filters.seniorityLevels.length) params.set('seniority', filters.seniorityLevels.join(','));
+      if (filters.industries.length) params.set('industry', filters.industries.join(','));
+      if (filters.companyTypes.length) params.set('companyType', filters.companyTypes.join(','));
+      if (filters.companySizes.length) params.set('companySize', filters.companySizes.join(','));
       params.set('page', String(page));
       params.set('pageSize', String(pageSize));
       params.set('sort', sort);
-      const res = await fetch(`/api/jobs?${params.toString()}`);
+      const token = dbUser ? await getIdToken() : null;
+      const res = await fetch(`/api/jobs?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const data = await res.json();
       setJobs(data.data || []);
       setTotalPages(data.totalPages || 1);
@@ -77,7 +98,7 @@ export default function CandidateJobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, filters, page, sort]);
+  }, [dbUser, search, filters, locationFilter, page, sort]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -119,15 +140,38 @@ export default function CandidateJobsPage() {
     } catch {}
   };
 
-  const hasActiveFilters = filters.roles.length + filters.countries.length + filters.workModels.length + filters.seniorityLevels.length > 0;
+  const hasActiveFilters = Boolean(
+    locationFilter ||
+    filters.roles.length ||
+    filters.countries.length ||
+    filters.workModels.length ||
+    filters.seniorityLevels.length ||
+    filters.industries.length ||
+    filters.companyTypes.length ||
+    filters.companySizes.length
+  );
 
   const clearAllFilters = () => {
-    setFilters({ roles: [], countries: [], workModels: [], seniorityLevels: [] });
+    setFilters({
+      roles: [],
+      countries: [],
+      workModels: [],
+      seniorityLevels: [],
+      industries: [],
+      companyTypes: [],
+      companySizes: [],
+    });
+    setLocationFilter('');
     setSearch('');
     setPage(1);
   };
 
   const removeFilter = (group: string, value: string) => {
+    if (group === 'locations') {
+      setLocationFilter('');
+      setPage(1);
+      return;
+    }
     setFilters((prev) => ({
       ...prev,
       [group]: (prev as any)[group].filter((v: string) => v !== value),
@@ -176,20 +220,21 @@ export default function CandidateJobsPage() {
             Filter
             {hasActiveFilters && (
               <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary text-primary-foreground text-xs px-1">
-                {filters.roles.length + filters.countries.length + filters.workModels.length + filters.seniorityLevels.length}
+                {filters.roles.length + filters.countries.length + filters.workModels.length + filters.seniorityLevels.length + filters.industries.length + filters.companyTypes.length + filters.companySizes.length + (locationFilter ? 1 : 0)}
               </span>
             )}
           </button>
         </div>
 
         {/* Desktop filter bar */}
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="hidden lg:flex flex-wrap items-center gap-2">
           <MultiSelectFilter
             label="Rolle"
             options={ROLE_OPTIONS}
             selected={filters.roles}
             onChange={(v) => { setFilters((p) => ({ ...p, roles: v })); setPage(1); }}
             className="w-44"
+            placeholder="Egal"
           />
           <MultiSelectFilter
             label="Land"
@@ -197,6 +242,7 @@ export default function CandidateJobsPage() {
             selected={filters.countries}
             onChange={(v) => { setFilters((p) => ({ ...p, countries: v })); setPage(1); }}
             className="w-40"
+            placeholder="Egal"
           />
           <MultiSelectFilter
             label="Arbeitsmodell"
@@ -204,6 +250,7 @@ export default function CandidateJobsPage() {
             selected={filters.workModels}
             onChange={(v) => { setFilters((p) => ({ ...p, workModels: v })); setPage(1); }}
             className="w-40"
+            placeholder="Egal"
           />
           <MultiSelectFilter
             label="Seniorität"
@@ -211,7 +258,41 @@ export default function CandidateJobsPage() {
             selected={filters.seniorityLevels}
             onChange={(v) => { setFilters((p) => ({ ...p, seniorityLevels: v })); setPage(1); }}
             className="w-40"
+            placeholder="Egal"
           />
+          <MultiSelectFilter
+            label="Unternehmen"
+            options={COMPANY_TYPE_OPTIONS}
+            selected={filters.companyTypes}
+            onChange={(v) => { setFilters((p) => ({ ...p, companyTypes: v })); setPage(1); }}
+            className="w-44"
+            placeholder="Egal"
+          />
+          <MultiSelectFilter
+            label="Größe"
+            options={COMPANY_SIZE_OPTIONS}
+            selected={filters.companySizes}
+            onChange={(v) => { setFilters((p) => ({ ...p, companySizes: v })); setPage(1); }}
+            className="w-40"
+            placeholder="Egal"
+          />
+          <MultiSelectFilter
+            label="Branche"
+            options={INDUSTRY_OPTIONS}
+            selected={filters.industries}
+            onChange={(v) => { setFilters((p) => ({ ...p, industries: v })); setPage(1); }}
+            className="w-44"
+            placeholder="Egal"
+          />
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={locationFilter}
+              onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }}
+              placeholder="Ort"
+              className="h-9 w-40 pl-8"
+            />
+          </div>
           <div className="ml-auto flex items-center gap-2">
             <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
             <select
@@ -229,10 +310,14 @@ export default function CandidateJobsPage() {
         {/* Mobile filter sheet */}
         {mobileFilters && (
           <div className="lg:hidden space-y-3 p-4 rounded-xl border bg-background">
-            <MultiSelectFilter label="Rolle" options={ROLE_OPTIONS} selected={filters.roles} onChange={(v) => { setFilters((p) => ({ ...p, roles: v })); setPage(1); }} />
-            <MultiSelectFilter label="Land" options={COUNTRY_OPTIONS} selected={filters.countries} onChange={(v) => { setFilters((p) => ({ ...p, countries: v })); setPage(1); }} />
-            <MultiSelectFilter label="Arbeitsmodell" options={REMOTE_OPTIONS} selected={filters.workModels} onChange={(v) => { setFilters((p) => ({ ...p, workModels: v })); setPage(1); }} />
-            <MultiSelectFilter label="Seniorität" options={SENIORITY_OPTIONS} selected={filters.seniorityLevels} onChange={(v) => { setFilters((p) => ({ ...p, seniorityLevels: v })); setPage(1); }} />
+            <MultiSelectFilter label="Rolle" options={ROLE_OPTIONS} selected={filters.roles} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, roles: v })); setPage(1); }} />
+            <MultiSelectFilter label="Land" options={COUNTRY_OPTIONS} selected={filters.countries} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, countries: v })); setPage(1); }} />
+            <MultiSelectFilter label="Arbeitsmodell" options={REMOTE_OPTIONS} selected={filters.workModels} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, workModels: v })); setPage(1); }} />
+            <MultiSelectFilter label="Seniorität" options={SENIORITY_OPTIONS} selected={filters.seniorityLevels} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, seniorityLevels: v })); setPage(1); }} />
+            <MultiSelectFilter label="Unternehmen" options={COMPANY_TYPE_OPTIONS} selected={filters.companyTypes} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, companyTypes: v })); setPage(1); }} />
+            <MultiSelectFilter label="Größe" options={COMPANY_SIZE_OPTIONS} selected={filters.companySizes} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, companySizes: v })); setPage(1); }} />
+            <MultiSelectFilter label="Branche" options={INDUSTRY_OPTIONS} selected={filters.industries} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, industries: v })); setPage(1); }} />
+            <Input value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} placeholder="Ort" />
             <div className="flex items-center gap-2">
               <select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} className="h-9 flex-1 rounded-lg border bg-background px-3 text-sm">
                 <option value="newest">Neueste zuerst</option>
@@ -246,7 +331,7 @@ export default function CandidateJobsPage() {
         {/* Active filter chips */}
         {hasActiveFilters && (
           <ActiveFilterChips
-            filters={filters}
+            filters={{ ...filters, locations: locationFilter ? [locationFilter] : [] }}
             labels={FILTER_LABEL_MAP}
             onRemove={removeFilter}
             onClearAll={clearAllFilters}
@@ -323,9 +408,24 @@ export default function CandidateJobsPage() {
                           {job.roleCategory}
                         </span>
                       )}
+                      {job.company?.employeeCount && (
+                        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5">
+                          {job.company.employeeCount}
+                        </span>
+                      )}
+                      {job.industry && (
+                        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5">
+                          {job.industry}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
+                    {typeof job.matchScore === 'number' && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        Match {job.matchScore}%
+                      </span>
+                    )}
                     {(job.oteMin || job.oteMax) && (
                       <p className="text-sm font-semibold text-primary whitespace-nowrap">
                         {formatSalaryRange(job.oteMin, job.oteMax)}
@@ -354,6 +454,15 @@ export default function CandidateJobsPage() {
                     ))}
                   </div>
                 )}
+                {job.matchReasons?.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {job.matchReasons.slice(0, 2).map((reason: string) => (
+                      <p key={reason} className="text-xs text-muted-foreground">
+                        {reason}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -364,6 +473,19 @@ export default function CandidateJobsPage() {
               <div className="sticky top-20 rounded-xl border bg-background p-6 space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
                 <h3 className="font-bold text-lg">{selectedJob.title}</h3>
                 <p className="text-sm text-muted-foreground">{getPublicCompanyLabel(selectedJob)}</p>
+                {typeof selectedJob.matchScore === 'number' && (
+                  <div className="rounded-lg border bg-emerald-50/70 p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Match</p>
+                    <p className="mt-1 text-2xl font-bold text-emerald-700">{selectedJob.matchScore}%</p>
+                    {selectedJob.matchReasons?.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {selectedJob.matchReasons.slice(0, 3).map((reason: string) => (
+                          <p key={reason} className="text-xs text-emerald-800/80">{reason}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2 text-sm">
                   {selectedJob.location && (

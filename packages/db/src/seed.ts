@@ -2,6 +2,285 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const countryLocations: Record<string, string[]> = {
+  Deutschland: ['Berlin', 'München', 'Hamburg', 'Frankfurt', 'Köln'],
+  Österreich: ['Wien', 'Linz', 'Graz', 'Salzburg'],
+  Schweiz: ['Zürich', 'Zug', 'Basel', 'Lausanne'],
+};
+
+const variantTemplates = [
+  { country: 'Deutschland', remoteType: 'remote', companyStage: 'series-a', companyIdx: 1, sourceType: 'direct_company_posting', featured: false, agencyManaged: false },
+  { country: 'Deutschland', remoteType: 'hybrid', companyStage: 'series-b', companyIdx: 0, sourceType: 'agency_managed_job', featured: true, agencyManaged: true },
+  { country: 'Österreich', remoteType: 'hybrid', companyStage: 'series-b', companyIdx: 2, sourceType: 'direct_company_posting', featured: false, agencyManaged: false },
+  { country: 'Schweiz', remoteType: 'onsite', companyStage: 'series-c', companyIdx: 2, sourceType: 'agency_managed_job', featured: true, agencyManaged: true },
+] as const;
+
+const roleDefinitions = [
+  {
+    roleCategory: 'SDR',
+    titleBase: 'Sales Development Representative',
+    seniorities: ['junior', 'junior', 'mid', 'mid'],
+    baseMins: [42000, 44000, 47000, 52000],
+    baseMaxs: [52000, 56000, 62000, 68000],
+    oteMins: [62000, 68000, 76000, 84000],
+    oteMaxs: [76000, 84000, 92000, 98000],
+    industries: ['SaaS', 'AI / Automation', 'MarTech', 'Cyber Security'],
+    salesMotions: ['SMB', 'PLG', 'Mid-Market', 'Enterprise'],
+    averageDealSizes: [12000, 15000, 22000, 28000],
+    salesCycles: [21, 28, 35, 45],
+    quotas: ['20 qualifizierte Meetings pro Monat', '18 SQLs pro Monat', '22 Discovery-Slots pro Monat', '15 Enterprise-Pipelines pro Quartal'],
+    tags: ['Outbound', 'Prospecting', 'Cold Calling'],
+  },
+  {
+    roleCategory: 'BDR',
+    titleBase: 'Business Development Representative',
+    seniorities: ['junior', 'mid', 'mid', 'senior'],
+    baseMins: [43000, 47000, 50000, 56000],
+    baseMaxs: [54000, 60000, 66000, 74000],
+    oteMins: [65000, 78000, 84000, 92000],
+    oteMaxs: [82000, 92000, 98000, 110000],
+    industries: ['Cloud Infrastructure', 'FinTech', 'HR Tech', 'SaaS'],
+    salesMotions: ['SMB', 'Mid-Market', 'Channel', 'Enterprise'],
+    averageDealSizes: [15000, 25000, 35000, 45000],
+    salesCycles: [25, 35, 45, 60],
+    quotas: ['Pipeline von 300k pro Quartal', '15 Opportunities pro Monat', 'Partner-Pipeline von 250k', 'Named-Account Coverage für 80 Zielkunden'],
+    tags: ['Pipeline Building', 'Outbound', 'Account Research'],
+  },
+  {
+    roleCategory: 'Account Executive',
+    titleBase: 'Account Executive',
+    seniorities: ['mid', 'mid', 'senior', 'senior'],
+    baseMins: [60000, 68000, 76000, 90000],
+    baseMaxs: [82000, 90000, 102000, 118000],
+    oteMins: [100000, 115000, 135000, 160000],
+    oteMaxs: [140000, 155000, 180000, 210000],
+    industries: ['SaaS', 'MarTech', 'FinTech', 'HealthTech'],
+    salesMotions: ['Full-Cycle', 'Mid-Market', 'Enterprise', 'Named Accounts'],
+    averageDealSizes: [30000, 45000, 70000, 90000],
+    salesCycles: [40, 55, 75, 90],
+    quotas: ['800k New ARR', '1 Mio. ARR', '1.2 Mio. ARR', '1.5 Mio. ARR'],
+    tags: ['Full-Cycle', 'Closing', 'Negotiation'],
+  },
+  {
+    roleCategory: 'Mid-Market AE',
+    titleBase: 'Mid-Market Account Executive',
+    seniorities: ['mid', 'mid', 'senior', 'senior'],
+    baseMins: [65000, 70000, 78000, 88000],
+    baseMaxs: [85000, 92000, 108000, 122000],
+    oteMins: [110000, 120000, 145000, 165000],
+    oteMaxs: [150000, 165000, 190000, 220000],
+    industries: ['SaaS', 'DevTools', 'AI / Automation', 'Cloud Infrastructure'],
+    salesMotions: ['Mid-Market', 'Full-Cycle', 'PLG', 'Enterprise'],
+    averageDealSizes: [45000, 60000, 85000, 110000],
+    salesCycles: [50, 60, 75, 90],
+    quotas: ['900k New ARR', '1 Mio. ARR', '1.3 Mio. ARR', '1.5 Mio. ARR'],
+    tags: ['Mid-Market', 'MEDDIC', 'Demo Calls'],
+  },
+  {
+    roleCategory: 'Enterprise AE',
+    titleBase: 'Enterprise Account Executive',
+    seniorities: ['senior', 'senior', 'lead', 'lead'],
+    baseMins: [85000, 95000, 110000, 125000],
+    baseMaxs: [115000, 128000, 145000, 160000],
+    oteMins: [150000, 170000, 210000, 240000],
+    oteMaxs: [210000, 230000, 290000, 330000],
+    industries: ['Data & Analytics', 'Cyber Security', 'Cloud Infrastructure', 'SaaS'],
+    salesMotions: ['Enterprise', 'Named Accounts', 'Channel', 'Global'],
+    averageDealSizes: [90000, 140000, 220000, 300000],
+    salesCycles: [90, 110, 140, 170],
+    quotas: ['1.5 Mio. ARR', '1.8 Mio. ARR', '2.2 Mio. ARR', '2.5 Mio. ARR'],
+    tags: ['Enterprise Sales', 'C-Level', 'Forecasting'],
+  },
+  {
+    roleCategory: 'Strategic AE',
+    titleBase: 'Strategic Account Executive',
+    seniorities: ['senior', 'lead', 'head', 'head'],
+    baseMins: [95000, 110000, 125000, 140000],
+    baseMaxs: [125000, 140000, 155000, 175000],
+    oteMins: [170000, 210000, 250000, 300000],
+    oteMaxs: [240000, 290000, 340000, 420000],
+    industries: ['Data & Analytics', 'FinTech', 'Cyber Security', 'SaaS'],
+    salesMotions: ['Enterprise', 'Global', 'Named Accounts', 'Channel'],
+    averageDealSizes: [180000, 250000, 350000, 500000],
+    salesCycles: [120, 150, 180, 210],
+    quotas: ['2 Mio. ARR', '2.5 Mio. ARR', '3 Mio. ARR', '4 Mio. ARR'],
+    tags: ['Strategic Deals', 'Executive Presence', 'Complex Sales'],
+  },
+  {
+    roleCategory: 'Sales Manager',
+    titleBase: 'Sales Manager',
+    seniorities: ['lead', 'lead', 'head', 'director'],
+    baseMins: [90000, 98000, 115000, 130000],
+    baseMaxs: [118000, 128000, 145000, 160000],
+    oteMins: [150000, 165000, 200000, 230000],
+    oteMaxs: [210000, 225000, 270000, 310000],
+    industries: ['SaaS', 'Cloud Infrastructure', 'HR Tech', 'Data & Analytics'],
+    salesMotions: ['Mid-Market', 'Enterprise', 'Channel', 'Global'],
+    averageDealSizes: [70000, 95000, 140000, 180000],
+    salesCycles: [70, 90, 120, 135],
+    quotas: ['Teamziel 4 Mio. ARR', 'Teamziel 5 Mio. ARR', 'Forecast Accuracy >90%', 'Ramp-Plan für 6 neue Hires'],
+    tags: ['Leadership', 'Pipeline Management', 'Coaching'],
+  },
+  {
+    roleCategory: 'Head of Sales',
+    titleBase: 'Head of Sales',
+    seniorities: ['head', 'head', 'director', 'vp'],
+    baseMins: [115000, 125000, 145000, 165000],
+    baseMaxs: [145000, 155000, 175000, 200000],
+    oteMins: [190000, 220000, 260000, 320000],
+    oteMaxs: [270000, 300000, 360000, 450000],
+    industries: ['SaaS', 'Cyber Security', 'Cloud Infrastructure', 'FinTech'],
+    salesMotions: ['Enterprise', 'Global', 'Channel', 'Named Accounts'],
+    averageDealSizes: [120000, 180000, 240000, 320000],
+    salesCycles: [100, 130, 150, 180],
+    quotas: ['Regionale Umsatzverantwortung 8 Mio. ARR', 'Pipeline Coverage 4x', 'Internationalisierung DACH', 'Go-to-Market Skalierung'],
+    tags: ['Sales Leadership', 'Hiring', 'Forecasting'],
+  },
+  {
+    roleCategory: 'VP Sales',
+    titleBase: 'VP Sales',
+    seniorities: ['director', 'vp', 'vp', 'c-level'],
+    baseMins: [150000, 170000, 185000, 220000],
+    baseMaxs: [190000, 210000, 240000, 280000],
+    oteMins: [260000, 300000, 360000, 420000],
+    oteMaxs: [380000, 430000, 520000, 650000],
+    industries: ['SaaS', 'AI / Automation', 'Data & Analytics', 'Cloud Infrastructure'],
+    salesMotions: ['Global', 'Enterprise', 'Channel', 'Named Accounts'],
+    averageDealSizes: [180000, 260000, 360000, 500000],
+    salesCycles: [120, 150, 180, 210],
+    quotas: ['Gesamtumsatz 15 Mio. ARR', 'Regionale Expansion', 'Leadership für 30+ Verkäufer', 'Board Reporting & GTM Steuerung'],
+    tags: ['Executive Leadership', 'Revenue Strategy', 'Scale-Up'],
+  },
+  {
+    roleCategory: 'Revenue Operations',
+    titleBase: 'Revenue Operations Manager',
+    seniorities: ['mid', 'senior', 'lead', 'director'],
+    baseMins: [68000, 82000, 98000, 120000],
+    baseMaxs: [90000, 108000, 126000, 150000],
+    oteMins: [85000, 98000, 120000, 145000],
+    oteMaxs: [110000, 125000, 150000, 185000],
+    industries: ['SaaS', 'Cloud Infrastructure', 'MarTech', 'Data & Analytics'],
+    salesMotions: ['PLG', 'Mid-Market', 'Enterprise', 'Global'],
+    averageDealSizes: [25000, 50000, 85000, 120000],
+    salesCycles: [35, 50, 70, 90],
+    quotas: ['Forecast Accuracy 95%', 'Funnel Conversion +15%', 'CRM Hygiene 98%', 'Planungszyklus für Revenue Teams'],
+    tags: ['RevOps', 'Salesforce', 'Forecasting'],
+  },
+  {
+    roleCategory: 'Sales Engineer',
+    titleBase: 'Sales Engineer',
+    seniorities: ['mid', 'senior', 'senior', 'lead'],
+    baseMins: [75000, 90000, 98000, 110000],
+    baseMaxs: [98000, 116000, 128000, 145000],
+    oteMins: [95000, 120000, 135000, 160000],
+    oteMaxs: [125000, 150000, 170000, 205000],
+    industries: ['Cyber Security', 'Cloud Infrastructure', 'Data & Analytics', 'DevTools'],
+    salesMotions: ['Mid-Market', 'Enterprise', 'Channel', 'Global'],
+    averageDealSizes: [45000, 90000, 150000, 220000],
+    salesCycles: [50, 75, 95, 120],
+    quotas: ['Demo-to-Proposal Conversion 60%', 'POC Success >70%', 'Technische Champion-Building', 'Solution Win Rate verbessern'],
+    tags: ['Pre-Sales', 'Technical Discovery', 'Solution Selling'],
+  },
+  {
+    roleCategory: 'Customer Success',
+    titleBase: 'Customer Success Manager',
+    seniorities: ['mid', 'senior', 'lead', 'head'],
+    baseMins: [58000, 70000, 85000, 102000],
+    baseMaxs: [76000, 92000, 108000, 130000],
+    oteMins: [75000, 92000, 110000, 140000],
+    oteMaxs: [98000, 120000, 145000, 185000],
+    industries: ['HR Tech', 'SaaS', 'MarTech', 'HealthTech'],
+    salesMotions: ['PLG', 'Mid-Market', 'Enterprise', 'Global'],
+    averageDealSizes: [20000, 40000, 70000, 110000],
+    salesCycles: [30, 45, 60, 75],
+    quotas: ['NRR >105%', 'Expansion Pipeline 400k', 'Churn <5%', 'Enterprise Renewal Plan'],
+    tags: ['Retention', 'Expansion', 'Stakeholder Management'],
+  },
+] as const;
+
+function buildJobDescription(titleBase: string, roleCategory: string, country: string, remoteType: string, industry: string, companyStage: string, salesMotion: string, averageDealSize: number, salesCycleLength: number) {
+  return [
+    `Ein Unternehmen im Bereich ${industry} sucht für ein ${companyStage}-Setup in ${country} eine Person für ${titleBase}.`,
+    `Die Rolle bewegt sich im Feld ${roleCategory} und arbeitet in einem ${remoteType === 'remote' ? 'remote-first' : remoteType === 'hybrid' ? 'hybriden' : 'vor-Ort'} Umfeld mit Fokus auf ${salesMotion}.`,
+    `Relevant sind strukturierter Pipeline-Aufbau, belastbare Abschlusslogik und Erfahrung mit durchschnittlichen Dealgrößen um ${averageDealSize.toLocaleString('de-DE')} EUR bei Sales Cycles von rund ${salesCycleLength} Tagen.`,
+  ].join(' ');
+}
+
+function buildRequirements(roleCategory: string, seniority: string, salesMotion: string, country: string) {
+  return [
+    `Mehrjährige Erfahrung im Bereich ${roleCategory} auf ${seniority}-Niveau oder klar nachweisbare Lernkurve in angrenzenden Rollen.`,
+    `Sicherer Umgang mit ${salesMotion} Prozessen, strukturierter Qualification und stakeholderbasiertem Selling.`,
+    `Sehr gute Kommunikation auf Deutsch sowie professionelle Zusammenarbeit im Markt ${country}.`,
+  ].join(' ');
+}
+
+function buildBenefits(remoteType: string, companyStage: string, industry: string) {
+  return [
+    `${remoteType === 'remote' ? 'Remote-first Zusammenarbeit' : remoteType === 'hybrid' ? 'Hybrid Setup mit flexiblen Präsenztagen' : 'Klare Vor-Ort Zusammenarbeit mit engem Stakeholder-Zugang'}`,
+    `Sichtbarer Einfluss in einem ${companyStage}-Umfeld im Feld ${industry}`,
+    'Strukturierter Hiring-Prozess mit Briefing, Feedback und transparenter Timeline',
+  ].join(' · ');
+}
+
+function generateJobsData() {
+  return roleDefinitions.flatMap((definition, roleIndex) =>
+    variantTemplates.map((template, variantIndex) => {
+      const locationOptions = countryLocations[template.country];
+      const location = locationOptions[(roleIndex + variantIndex) % locationOptions.length];
+      const seniority = definition.seniorities[variantIndex];
+      const industry = definition.industries[variantIndex];
+      const salesMotion = definition.salesMotions[variantIndex];
+      const averageDealSize = definition.averageDealSizes[variantIndex];
+      const salesCycleLength = definition.salesCycles[variantIndex];
+      const title = `${definition.titleBase} – ${template.country === 'Deutschland' ? 'DACH' : template.country}`;
+      const slug = `demo-${definition.roleCategory.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${template.country.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${variantIndex + 1}`;
+      const descriptionAnonymized = buildJobDescription(
+        definition.titleBase,
+        definition.roleCategory,
+        template.country,
+        template.remoteType,
+        industry,
+        template.companyStage,
+        salesMotion,
+        averageDealSize,
+        salesCycleLength,
+      );
+
+      return {
+        companyIdx: template.companyIdx,
+        title,
+        slug,
+        roleCategory: definition.roleCategory,
+        seniority,
+        location,
+        country: template.country,
+        remoteType: template.remoteType,
+        industry,
+        companyStage: template.companyStage,
+        salaryMin: definition.baseMins[variantIndex],
+        salaryMax: definition.baseMaxs[variantIndex],
+        oteMin: definition.oteMins[variantIndex],
+        oteMax: definition.oteMaxs[variantIndex],
+        description: descriptionAnonymized,
+        descriptionOriginal: descriptionAnonymized,
+        descriptionAnonymized,
+        requirements: buildRequirements(definition.roleCategory, seniority, salesMotion, template.country),
+        benefits: buildBenefits(template.remoteType, template.companyStage, industry),
+        salesMotion,
+        averageDealSize,
+        salesCycleLength,
+        quota: definition.quotas[variantIndex],
+        isFeatured: template.featured,
+        isAgencyManaged: template.agencyManaged,
+        sourceType: template.sourceType,
+        originalCompanyName: null,
+        anonymizedCompanyProfile: `Ein ${template.companyStage}-Unternehmen im Bereich ${industry} mit Fokus auf ${salesMotion} im Markt ${template.country}`,
+        tags: [...definition.tags, industry, salesMotion],
+      };
+    }),
+  );
+}
+
 async function main() {
   console.log('🌱 Seeding database...');
 
@@ -79,12 +358,14 @@ async function main() {
     },
   ];
 
+  const candidateProfiles: any[] = [];
   for (const p of profiles) {
-    await prisma.candidateProfile.upsert({
+    const profile = await prisma.candidateProfile.upsert({
       where: { userId: p.userId },
       update: {},
       create: p,
     });
+    candidateProfiles.push(profile);
   }
   console.log('✅ Candidate profiles created');
 
@@ -149,38 +430,112 @@ async function main() {
   console.log('✅ Companies created');
 
   // ─── Jobs ─────────────────────────────────────────────────
-  const jobsData = [
-    { companyIdx: 0, title: 'Enterprise Account Executive – DACH', slug: 'enterprise-ae-dach-techcorp', roleCategory: 'Enterprise AE', seniority: 'senior', location: 'München', country: 'Deutschland', remoteType: 'hybrid', salaryMin: 80000, salaryMax: 120000, oteMin: 140000, oteMax: 200000, description: 'Als Enterprise AE verantwortest du den gesamten Sales-Cycle für unsere Enterprise-Kunden im DACH-Raum. Du arbeitest eng mit dem Pre-Sales und Customer Success zusammen.', requirements: 'Mindestens 4 Jahre Erfahrung im Enterprise SaaS Sales. Nachweisbare Quota-Erreichung. Fließend Deutsch und Englisch.', isFeatured: true, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 0, title: 'SDR – Outbound DACH', slug: 'sdr-outbound-techcorp', roleCategory: 'SDR', seniority: 'junior', location: 'München', country: 'Deutschland', remoteType: 'hybrid', salaryMin: 42000, salaryMax: 50000, oteMin: 60000, oteMax: 72000, description: 'Du bist der erste Kontaktpunkt für unsere potenziellen Enterprise-Kunden. Aufbau und Qualifizierung der Pipeline für unser AE-Team.', requirements: 'Erste Erfahrung im B2B Sales oder Vertrieb. Hohe Kommunikationsstärke. Deutsch auf Muttersprachniveau.', isFeatured: false, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 0, title: 'Sales Manager – Enterprise Team', slug: 'sales-manager-enterprise-techcorp', roleCategory: 'Sales Manager', seniority: 'lead', location: 'München', country: 'Deutschland', remoteType: 'hybrid', salaryMin: 95000, salaryMax: 120000, oteMin: 160000, oteMax: 210000, description: 'Führung und Skalierung unseres Enterprise Sales Teams. Verantwortung für Quota, Pipeline und Teamaufbau.', requirements: '6+ Jahre Sales Erfahrung, davon mindestens 2 in einer Führungsrolle. Enterprise SaaS Background.', isFeatured: true, isAgencyManaged: true, sourceType: 'agency_managed_job', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 1, title: 'Account Executive – Mid-Market', slug: 'ae-midmarket-cloudscale', roleCategory: 'Mid-Market AE', seniority: 'mid', location: 'Berlin', country: 'Deutschland', remoteType: 'remote', salaryMin: 60000, salaryMax: 80000, oteMin: 100000, oteMax: 140000, description: 'Betreuung und Ausbau unserer Mid-Market Kunden. Full-Cycle Sales von der Demo bis zum Abschluss.', requirements: '2-4 Jahre B2B SaaS Sales Erfahrung. Cloud/IT Affinität. Remote-Erfahrung.', isFeatured: false, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 1, title: 'BDR – DACH Region', slug: 'bdr-dach-cloudscale', roleCategory: 'BDR', seniority: 'junior', location: 'Berlin', country: 'Deutschland', remoteType: 'remote', salaryMin: 40000, salaryMax: 48000, oteMin: 58000, oteMax: 70000, description: 'Business Development für die DACH Region. Identifikation und Ansprache von Zielkunden.', requirements: 'Motivation und Lernbereitschaft. Erste Sales-Erfahrung von Vorteil. Deutsch und Englisch.', isFeatured: false, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 1, title: 'Revenue Operations Manager', slug: 'revops-cloudscale', roleCategory: 'Revenue Operations', seniority: 'senior', location: 'Berlin', country: 'Deutschland', remoteType: 'remote', salaryMin: 75000, salaryMax: 95000, oteMin: 85000, oteMax: 110000, description: 'Aufbau und Optimierung unserer Revenue Operations. CRM, Reporting, Forecasting und Prozessoptimierung.', requirements: '3+ Jahre RevOps oder Sales Ops Erfahrung. Salesforce/HubSpot Expertise. Analytisches Denken.', isFeatured: false, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 2, title: 'Head of Sales DACH', slug: 'head-of-sales-dach-dataflow', roleCategory: 'Head of Sales', seniority: 'head', location: 'Zürich', country: 'Schweiz', remoteType: 'hybrid', salaryMin: 130000, salaryMax: 160000, oteMin: 220000, oteMax: 300000, description: 'Aufbau und Führung des gesamten DACH Sales Teams. Reporting an den VP Sales. Strategische Marktentwicklung.', requirements: '8+ Jahre Sales Erfahrung. Nachweisbare Führungserfahrung. Enterprise SaaS. Fließend DE/EN.', isFeatured: true, isAgencyManaged: true, sourceType: 'agency_managed_job', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 2, title: 'Strategic Account Executive', slug: 'strategic-ae-dataflow', roleCategory: 'Strategic AE', seniority: 'senior', location: 'Zürich', country: 'Schweiz', remoteType: 'hybrid', salaryMin: 100000, salaryMax: 140000, oteMin: 180000, oteMax: 260000, description: 'Betreuung unserer Top-Accounts im DACH-Raum. Strategische Partnerschaften und komplexe Deals.', requirements: '5+ Jahre Enterprise Sales. Track Record mit Deals >500k ARR. C-Level Selling.', isFeatured: true, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 2, title: 'Sales Engineer – Pre-Sales', slug: 'sales-engineer-dataflow', roleCategory: 'Sales Engineer', seniority: 'mid', location: 'Zürich', country: 'Schweiz', remoteType: 'hybrid', salaryMin: 90000, salaryMax: 120000, oteMin: 100000, oteMax: 140000, description: 'Technische Unterstützung des Sales Teams. Product Demos, POCs und technische Due Diligence.', requirements: 'Technischer Background plus Sales-Affinität. Erfahrung mit Data/Analytics Produkten. DE/EN.', isFeatured: false, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 0, title: 'VP Sales – DACH & Nordics', slug: 'vp-sales-techcorp', roleCategory: 'VP Sales', seniority: 'vp', location: 'München', country: 'Deutschland', remoteType: 'hybrid', salaryMin: 150000, salaryMax: 200000, oteMin: 280000, oteMax: 400000, description: 'Gesamtverantwortung für Revenue in DACH und Nordics. Board-Level Reporting. Teamaufbau von 20 auf 50 Personen.', requirements: '10+ Jahre Sales Leadership. SaaS/Enterprise. Skalierungserfahrung. C-Level Netzwerk.', isFeatured: true, isAgencyManaged: true, sourceType: 'agency_managed_job', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 1, title: 'Account Executive – Enterprise', slug: 'ae-enterprise-cloudscale', roleCategory: 'Enterprise AE', seniority: 'senior', location: 'Frankfurt', country: 'Deutschland', remoteType: 'hybrid', salaryMin: 75000, salaryMax: 100000, oteMin: 130000, oteMax: 180000, description: 'Aufbau unseres Enterprise-Segments. Du bist einer der ersten Enterprise AEs und gestaltest den Segment-Aufbau mit.', requirements: '4+ Jahre B2B SaaS Sales. Cloud/Infrastructure Erfahrung. Hunter-Mentalität.', isFeatured: false, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-    { companyIdx: 2, title: 'Mid-Market AE – Österreich', slug: 'midmarket-ae-austria-dataflow', roleCategory: 'Mid-Market AE', seniority: 'mid', location: 'Wien', country: 'Österreich', remoteType: 'hybrid', salaryMin: 65000, salaryMax: 85000, oteMin: 110000, oteMax: 150000, description: 'Marktaufbau in Österreich. Full-Cycle Sales für unsere Data Analytics Plattform im Mid-Market Segment.', requirements: '2-4 Jahre B2B Sales. Lokales Netzwerk in Österreich von Vorteil. Reisebereitschaft.', isFeatured: false, isAgencyManaged: false, sourceType: 'direct_company_posting', status: 'live', approvalStatus: 'approved' },
-  ];
-
+  const jobsData = generateJobsData();
+  const seededJobs: any[] = [];
   for (const jd of jobsData) {
     const { companyIdx, ...jobFields } = jd;
-    await prisma.job.upsert({
+    const seededJob = await prisma.job.upsert({
       where: { slug: jobFields.slug },
-      update: {},
+      update: {
+        ...jobFields,
+        companyId: companies[companyIdx].id,
+        employmentType: 'fulltime',
+        currency: 'EUR',
+        applyViaPlattform: true,
+        tags: jobFields.tags,
+        publishedAt: new Date(),
+      },
       create: {
         ...jobFields,
         companyId: companies[companyIdx].id,
         employmentType: 'fulltime',
         currency: 'EUR',
         applyViaPlattform: true,
-        tags: [jobFields.roleCategory],
+        tags: jobFields.tags,
+        status: 'live',
+        approvalStatus: 'approved',
         publishedAt: new Date(),
       },
     });
+    seededJobs.push(seededJob);
   }
-  console.log('✅ 12 Jobs created');
+  console.log(`✅ ${jobsData.length} Jobs created`);
+
+  const demoApplications = [
+    { jobSlug: jobsData[0].slug, candidateIdx: 0, status: 'interest_expressed', fitScore: 86, daysAgo: 2, candidateMessage: 'Ich passe gut auf die Rolle, weil ich gerade ähnliche KPIs verantworte.' },
+    { jobSlug: jobsData[4].slug, candidateIdx: 0, status: 'screening', fitScore: 82, daysAgo: 5, candidateMessage: 'Besonders spannend finde ich das Segment und die DACH-Verantwortung.' },
+    { jobSlug: jobsData[8].slug, candidateIdx: 0, status: 'shortlisted', fitScore: 88, daysAgo: 7, candidateMessage: 'Ich suche bewusst einen strukturierten Wechsel in ein stärkeres Mid-Market Umfeld.' },
+    { jobSlug: jobsData[12].slug, candidateIdx: 0, status: 'forwarded', fitScore: 91, daysAgo: 10, candidateMessage: 'Mein Track Record bei komplexeren Discovery-Prozessen passt sehr gut auf das Profil.' },
+    { jobSlug: jobsData[16].slug, candidateIdx: 0, status: 'interview_1', fitScore: 93, daysAgo: 14, candidateMessage: 'Enterprise Buying Committees und Value Selling sind mein Alltag.' },
+    { jobSlug: jobsData[20].slug, candidateIdx: 0, status: 'interview_2', fitScore: 95, daysAgo: 18, candidateMessage: 'Ich kann konkrete Beispiele zu Forecasting und Multi-Threading im Interview teilen.' },
+    { jobSlug: jobsData[24].slug, candidateIdx: 0, status: 'offer', fitScore: 90, daysAgo: 22, candidateMessage: 'Für mich sind Scope, OTE und Teamqualität die zentralen Punkte im finalen Schritt.' },
+    { jobSlug: jobsData[28].slug, candidateIdx: 0, status: 'hired', fitScore: 89, daysAgo: 30, candidateMessage: 'Der Prozess lief sehr strukturiert und nah an meinem Zielprofil.' },
+    { jobSlug: jobsData[32].slug, candidateIdx: 0, status: 'rejected', fitScore: 74, daysAgo: 12, candidateMessage: 'Trotzdem wertvoller Prozess mit gutem Feedback.' },
+    { jobSlug: jobsData[36].slug, candidateIdx: 0, status: 'withdrawn', fitScore: 79, daysAgo: 9, candidateMessage: 'Ich habe mich parallel für eine andere Rolle entschieden.' },
+    { jobSlug: jobsData[40].slug, candidateIdx: 1, status: 'interview_1', fitScore: 84, daysAgo: 6, candidateMessage: 'Ich möchte den nächsten Karriereschritt aus einer SDR-Rolle heraus machen.' },
+    { jobSlug: jobsData[44].slug, candidateIdx: 1, status: 'screening', fitScore: 81, daysAgo: 3, candidateMessage: 'Ich bringe starken Outbound-Fokus und viel Energie für eine AE-Rampe mit.' },
+  ];
+
+  const seededJobBySlug = new Map(seededJobs.map((job) => [job.slug, job]));
+  await prisma.application.deleteMany({
+    where: {
+      candidateId: { in: candidateProfiles.map((profile) => profile.id) },
+      jobId: { in: seededJobs.map((job) => job.id) },
+    },
+  });
+
+  for (const demoApplication of demoApplications) {
+    const job = seededJobBySlug.get(demoApplication.jobSlug);
+    const candidateProfile = candidateProfiles[demoApplication.candidateIdx] as any;
+    if (!job || !candidateProfile) continue;
+
+    const createdAt = new Date();
+    createdAt.setUTCDate(createdAt.getUTCDate() - demoApplication.daysAgo);
+
+    await prisma.application.create({
+      data: {
+        jobId: job.id,
+        candidateId: candidateProfile.id,
+        status: demoApplication.status,
+        fitScore: demoApplication.fitScore,
+        candidateMessage: demoApplication.candidateMessage,
+        forwardedAt: ['forwarded', 'interview_1', 'interview_2', 'offer', 'hired'].includes(demoApplication.status) ? createdAt : null,
+        createdAt,
+      } as any,
+    });
+  }
+
+  const prismaAny = prisma as any;
+
+  await prismaAny.recruitingCall.deleteMany({
+    where: { candidateId: { in: candidateProfiles.slice(0, 2).map((profile) => profile.id) } },
+  });
+
+  await prismaAny.recruitingCall.createMany({
+    data: [
+      {
+        candidateId: candidateProfiles[0].id,
+        scheduledTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        callType: 'intro_call',
+        meetingLink: 'https://calendar.mock/salescareerhub/intro-max',
+        notes: 'Briefing-Call mit Fokus auf Hiring-Team Vorbereitung',
+      },
+      {
+        candidateId: candidateProfiles[0].id,
+        scheduledTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+        callType: 'hiring_interview',
+        meetingLink: 'https://calendar.mock/salescareerhub/hiring-max',
+        notes: 'Mock-Hiring-Team Termin',
+      },
+      {
+        candidateId: candidateProfiles[1].id,
+        scheduledTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+        callType: 'intro_call',
+        meetingLink: 'https://calendar.mock/salescareerhub/intro-anna',
+        notes: 'Erster Recruiter-Call für den AE-Track',
+      },
+    ],
+  });
 
   // ─── Salary Insights ──────────────────────────────────────
   const salaryData = [

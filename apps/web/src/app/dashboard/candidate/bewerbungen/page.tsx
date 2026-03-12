@@ -50,6 +50,7 @@ export default function CandidateBewerbungenPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [view, setView] = useState<'list' | 'pipeline'>('list');
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
   useEffect(() => { fetchApplications(); }, []);
 
@@ -74,6 +75,17 @@ export default function CandidateBewerbungenPage() {
   const interviewCount = applications.filter((a: any) => ['interview_1', 'interview_2'].includes(a.status)).length;
   const offerCount = applications.filter((a: any) => a.status === 'offer').length;
   const rejectedCount = applications.filter((a: any) => a.status === 'rejected').length;
+  const selectedApplication = filtered.find((app: any) => app.id === selectedApplicationId) || filtered[0] || null;
+
+  useEffect(() => {
+    if (!filtered.length) {
+      setSelectedApplicationId(null);
+      return;
+    }
+    if (!selectedApplicationId || !filtered.some((app: any) => app.id === selectedApplicationId)) {
+      setSelectedApplicationId(filtered[0].id);
+    }
+  }, [filtered, selectedApplicationId]);
 
   return (
     <div className="space-y-6">
@@ -172,15 +184,23 @@ export default function CandidateBewerbungenPage() {
                           </div>
                         ) : (
                           stageApps.map((app: any) => (
-                            <Link key={app.id} href={`/jobs/${app.job?.slug || ''}`}>
-                              <div className="rounded-lg border bg-background p-3 hover:shadow-sm hover:border-primary/20 transition-all">
-                                <p className="font-medium text-sm truncate">{app.job?.title || 'Job'}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5 truncate">{getPublicCompanyLabel(app.job)}</p>
-                                <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />{formatRelativeDate(app.createdAt)}
-                                </p>
-                              </div>
-                            </Link>
+                            <button
+                              key={app.id}
+                              type="button"
+                              onClick={() => setSelectedApplicationId(app.id)}
+                              className={`w-full rounded-lg border bg-background p-3 text-left hover:shadow-sm hover:border-primary/20 transition-all ${
+                                selectedApplication?.id === app.id ? 'border-primary/30 ring-1 ring-primary/10' : ''
+                              }`}
+                            >
+                              <p className="font-medium text-sm truncate">{app.job?.title || 'Job'}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 truncate">{getPublicCompanyLabel(app.job)}</p>
+                              {typeof app.fitScore === 'number' && (
+                                <p className="mt-1.5 text-xs font-semibold text-emerald-700">Match {app.fitScore}%</p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />{formatRelativeDate(app.createdAt)}
+                              </p>
+                            </button>
                           ))
                         )}
                       </div>
@@ -208,7 +228,11 @@ export default function CandidateBewerbungenPage() {
                   const stageIdx = getStageIndex(app.status);
                   const stage = PIPELINE_STAGES[stageIdx];
                   return (
-                    <div key={app.id} className="group hover:bg-muted/30 transition-colors">
+                    <div
+                      key={app.id}
+                      className={`group cursor-pointer transition-colors ${selectedApplication?.id === app.id ? 'bg-primary/5' : 'hover:bg-muted/30'}`}
+                      onClick={() => setSelectedApplicationId(app.id)}
+                    >
                       <div className="flex items-center gap-4 p-4">
                         {/* Stage indicator */}
                         <div className="hidden sm:flex flex-col items-center gap-1 w-16 shrink-0">
@@ -244,6 +268,18 @@ export default function CandidateBewerbungenPage() {
                               </span>
                             )}
                           </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {typeof app.fitScore === 'number' && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                Match {app.fitScore}%
+                              </span>
+                            )}
+                            {app.nextStep && (
+                              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                                Nächster Schritt: {app.nextStep}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Pipeline progress mini */}
@@ -271,6 +307,153 @@ export default function CandidateBewerbungenPage() {
               )}
             </div>
           )}
+
+          {selectedApplication && (
+            <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
+              <div className="rounded-xl border bg-background p-5 space-y-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-lg font-semibold">{selectedApplication.job?.title || 'Job'}</h3>
+                      <StatusBadge status={selectedApplication.status} />
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {getPublicCompanyLabel(selectedApplication.job)}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-3">
+                      {selectedApplication.overview}
+                    </p>
+                  </div>
+                  <div className="shrink-0 rounded-xl border bg-emerald-50/70 px-4 py-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Match</p>
+                    <p className="text-2xl font-bold text-emerald-700">
+                      {typeof selectedApplication.fitScore === 'number' ? `${selectedApplication.fitScore}%` : 'n/a'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <DetailCard
+                    label="Aktueller Schritt"
+                    value={selectedApplication.currentStepLabel || APPLICATION_STATUS_LABELS[selectedApplication.status as keyof typeof APPLICATION_STATUS_LABELS] || selectedApplication.status}
+                    helper={`Beworben ${formatRelativeDate(selectedApplication.createdAt)}`}
+                  />
+                  <DetailCard
+                    label="Nächster Schritt"
+                    value={selectedApplication.nextStep || 'Wird geprüft'}
+                    helper={selectedApplication.nextStepDate ? new Date(selectedApplication.nextStepDate).toLocaleString('de-DE') : 'Noch ohne Termin'}
+                  />
+                </div>
+
+                {selectedApplication.matchReasons?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Warum du passt</p>
+                    <div className="space-y-2">
+                      {selectedApplication.matchReasons.map((reason: string) => (
+                        <div key={reason} className="rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                          {reason}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">Timeline</p>
+                    <Link href={`/jobs/${selectedApplication.job?.slug || ''}`} className="text-xs font-medium text-primary hover:underline">
+                      Job ansehen
+                    </Link>
+                  </div>
+                  <div className="space-y-3">
+                    {(selectedApplication.timeline || []).map((step: any, index: number) => (
+                      <div key={`${step.key}-${index}`} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <span
+                            className={`mt-1 h-2.5 w-2.5 rounded-full ${
+                              step.status === 'completed'
+                                ? 'bg-primary'
+                                : step.status === 'current'
+                                  ? 'bg-emerald-500'
+                                  : 'bg-muted-foreground/30'
+                            }`}
+                          />
+                          {index < (selectedApplication.timeline || []).length - 1 && (
+                            <span className="mt-2 h-full w-px bg-border" />
+                          )}
+                        </div>
+                        <div className="pb-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-medium">{step.label}</p>
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                              {step.status === 'completed' ? 'Erledigt' : step.status === 'current' ? 'Aktuell' : 'Danach'}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">{step.description}</p>
+                          {step.date && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {new Date(step.date).toLocaleString('de-DE')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-xl border bg-background p-5 space-y-3">
+                  <p className="text-sm font-medium">Dokumente & Infos</p>
+                  {(selectedApplication.resources || []).map((resource: any) => (
+                    <div key={resource.title} className="rounded-lg border bg-muted/20 px-3 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{resource.title}</p>
+                        <span className={`text-[11px] font-medium ${resource.ready ? 'text-emerald-700' : 'text-amber-700'}`}>
+                          {resource.ready ? 'Bereit' : 'Offen'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{resource.detail}</p>
+                    </div>
+                  ))}
+                  {selectedApplication.candidateMessage && (
+                    <div className="rounded-lg border bg-muted/20 px-3 py-3">
+                      <p className="text-sm font-medium">Deine Nachricht</p>
+                      <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">
+                        {selectedApplication.candidateMessage}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {selectedApplication.calendarAction && (
+                  <div className="rounded-xl border bg-background p-5 space-y-3">
+                    <div>
+                      <p className="text-sm font-medium">{selectedApplication.calendarAction.title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {selectedApplication.calendarAction.description}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedApplication.calendarAction.slots.map((slot: any) => (
+                        <a
+                          key={slot.startsAt}
+                          href={slot.link}
+                          className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm hover:border-primary/30 hover:bg-muted/20 transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-primary" />
+                            {slot.label}
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -282,6 +465,16 @@ function SummaryCard({ label, value, accent }: { label: string; value: number; a
     <div className="rounded-xl border bg-background p-4">
       <p className={`text-2xl font-bold ${accent}`}>{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function DetailCard({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div className="rounded-xl border bg-muted/20 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
     </div>
   );
 }

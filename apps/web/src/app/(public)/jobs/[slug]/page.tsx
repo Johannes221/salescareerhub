@@ -295,6 +295,19 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
           {/* Interest CTA */}
           <Card>
             <CardContent className="pt-6">
+              {typeof job.matchScore === 'number' && dbUser?.role === 'candidate' && (
+                <div className="mb-4 rounded-lg border bg-emerald-50/70 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Profil-Match</p>
+                  <p className="mt-1 text-3xl font-bold text-emerald-700">{job.matchScore}%</p>
+                  {job.matchReasons?.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {job.matchReasons.slice(0, 3).map((reason: string) => (
+                        <p key={reason} className="text-xs text-emerald-900/80">{reason}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {interestStatus ? (
                 <div className="text-center">
                   <CheckCircle className="h-10 w-10 text-green-600 mx-auto mb-3" />
@@ -305,6 +318,9 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                   <p className="text-xs text-muted-foreground">
                     Wir prüfen dein Profil und melden uns bei dir.
                   </p>
+                  <Link href="/dashboard/candidate/bewerbungen" className="mt-4 inline-flex text-sm font-medium text-primary hover:underline">
+                    Zur Timeline
+                  </Link>
                 </div>
               ) : (
                 <>

@@ -77,13 +77,16 @@ export default function RegisterPage() {
       const credential = provider === 'google' ? await loginWithGoogle() : await loginWithApple();
       await syncUser(credential.user.displayName);
     } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user') {
+      if (err?.code === 'auth/cancelled-popup-request') {
+        return;
+      } else if (err?.code === 'auth/popup-closed-by-user') {
         setError('Anmeldung abgebrochen.');
       } else if (err?.code === 'auth/unauthorized-domain') {
         setError('Diese Domain ist in Firebase Authentication noch nicht freigeschaltet.');
       } else if (err?.code === 'auth/operation-not-allowed') {
         setError(`Der ${provider === 'google' ? 'Google' : 'Apple'}-Login ist in Firebase noch nicht aktiviert.`);
       } else {
+        console.error(`${provider} registration failed:`, err);
         setError(typeof err?.message === 'string' ? err.message : `${provider === 'google' ? 'Google' : 'Apple'}-Registrierung fehlgeschlagen. Bitte versuche es erneut.`);
       }
     } finally {

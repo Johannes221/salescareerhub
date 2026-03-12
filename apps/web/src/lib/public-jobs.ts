@@ -43,6 +43,7 @@ export const publicJobSelect = {
   company: {
     select: {
       isVerified: true,
+      employeeCount: true,
     },
   },
 } as const;
@@ -52,7 +53,7 @@ export function mapJobToPublic<
     description?: string | null;
     descriptionAnonymized?: string | null;
     anonymizedCompanyProfile?: string | null;
-    company?: { isVerified?: boolean | null } | null;
+    company?: { isVerified?: boolean | null; employeeCount?: string | null } | null;
   }
 >(job: T) {
   const { descriptionAnonymized, company, ...rest } = job;
@@ -66,6 +67,7 @@ export function mapJobToPublic<
     company: {
       name: buildPublicCompanyLabel(job.anonymizedCompanyProfile),
       isVerified: company?.isVerified || false,
+      employeeCount: company?.employeeCount || null,
     },
   };
 }

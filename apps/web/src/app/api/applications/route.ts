@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
+import { buildApplicationJourney, computeCandidateJobMatch } from '@/lib/candidate-journey';
 import { prisma } from '@/lib/db';
 import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
 import { uploadCandidateDocument } from '@/lib/storage/candidate-documents';
@@ -209,6 +210,22 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const matchProfile = {
+      ...existingProfile,
+      email: user.email,
+      linkedinUrl,
+      currentRole: nullableString(currentRole) ?? existingProfile.currentRole ?? null,
+      yearsOfExperience: yearsOfSalesExperience ?? existingProfile.yearsOfExperience ?? null,
+      seniority,
+      averageDealSize: averageDealSize ?? existingProfile.averageDealSize ?? null,
+      averageSalesCycle: averageSalesCycle ?? existingProfile.averageSalesCycle ?? null,
+      industriesExperience,
+      salesMotionExperience,
+      largestDealClosed: largestDealClosed ?? existingProfile.largestDealClosed ?? null,
+      territorySize: nullableString(territoryType) ?? existingProfile.territorySize ?? null,
+    };
+    const match = computeCandidateJobMatch(matchProfile, job);
+
     const application = await prisma.application.create({
       data: {
         jobId,
@@ -216,6 +233,21 @@ export async function POST(req: NextRequest) {
         status: 'interest_expressed',
         candidateMessage: nullableString(candidateMessage),
         recommendedByAdmin: false,
+        fitScore: match.score,
+        linkedinUrl: nullableString(linkedinUrl) ?? existingProfile.linkedinUrl ?? null,
+        yearsOfSalesExperience: yearsOfSalesExperience ?? existingProfile.yearsOfExperience ?? null,
+        currentRoleSnapshot: nullableString(currentRole) ?? existingProfile.currentRole ?? null,
+        averageDealSize: averageDealSize ?? existingProfile.averageDealSize ?? null,
+        averageSalesCycle: averageSalesCycle ?? existingProfile.averageSalesCycle ?? null,
+        quotaTarget: quotaTarget ?? null,
+        quotaAttainment: quotaAttainment ?? null,
+        industriesExperience,
+        salesMotionExperience,
+        largestDealClosed: largestDealClosed ?? existingProfile.largestDealClosed ?? null,
+        territoryType: nullableString(territoryType) ?? existingProfile.territorySize ?? null,
+        cvDocumentId: cvDocument?.id ?? null,
+        cvFileName: cvDocument?.fileName ?? existingProfile.cvFileName ?? null,
+        cvFileUrl: cvDocument?.fileUrl ?? existingProfile.cvUrl ?? null,
       },
     });
 
@@ -342,6 +374,13 @@ export async function GET(req: NextRequest) {
         data: applications.map((application: (typeof applications)[number]) => ({
           ...application,
           job: application.job ? mapJobToPublic(application.job) : null,
+          ...buildApplicationJourney(
+            {
+              ...application,
+              job: application.job ? mapJobToPublic(application.job) : null,
+            },
+            user.candidateProfile,
+          ),
         })),
       });
     }

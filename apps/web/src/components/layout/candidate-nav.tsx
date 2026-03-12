@@ -71,7 +71,11 @@ export function CandidateNav() {
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  const displayName = dbUser?.displayName || dbUser?.email?.split('@')[0] || 'Profil';
+  const profileName = [dbUser?.candidateProfile?.firstName, dbUser?.candidateProfile?.lastName]
+    .filter(Boolean)
+    .join(' ');
+  const displayName = profileName || dbUser?.displayName || dbUser?.email?.split('@')[0] || 'Profil';
+  const displayEmail = dbUser?.candidateProfile?.email || dbUser?.email || '';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -190,8 +194,8 @@ export function CandidateNav() {
             {userMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border bg-popover shadow-lg animate-in fade-in-0 zoom-in-95">
                 <div className="px-4 py-3 border-b">
-                  <p className="text-sm font-medium truncate">{dbUser?.displayName || 'Kandidat'}</p>
-                  <p className="text-xs text-muted-foreground truncate">{dbUser?.email}</p>
+                  <p className="text-sm font-medium truncate">{displayName}</p>
+                  <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
                 </div>
                 <div className="py-1">
                   <Link
@@ -203,7 +207,7 @@ export function CandidateNav() {
                     Profil
                   </Link>
                   <Link
-                    href="/dashboard/candidate/profil/dokumente"
+                    href="/dashboard/candidate/dokumente"
                     className="flex items-center gap-2.5 px-4 py-2 text-sm hover:bg-accent/50 transition-colors"
                     onClick={() => setUserMenuOpen(false)}
                   >

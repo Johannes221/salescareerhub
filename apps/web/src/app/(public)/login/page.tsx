@@ -65,8 +65,9 @@ export default function LoginPage() {
       const credential = provider === 'google' ? await loginWithGoogle() : await loginWithApple();
       await syncSocialUser(credential.user.displayName);
     } catch (err: any) {
-      console.error(`${provider} login failed:`, err);
-      if (err?.code === 'auth/popup-closed-by-user') {
+      if (err?.code === 'auth/cancelled-popup-request') {
+        return;
+      } else if (err?.code === 'auth/popup-closed-by-user') {
         setError('Anmeldung abgebrochen.');
       } else if (err?.code === 'auth/popup-blocked') {
         setError('Das Login-Popup wurde blockiert. Bitte erlaube Popups für diese Seite.');
@@ -77,6 +78,7 @@ export default function LoginPage() {
       } else if (err?.code === 'auth/network-request-failed') {
         setError('Netzwerkfehler bei der Verbindung zu Firebase.');
       } else {
+        console.error(`${provider} login failed:`, err);
         setError(typeof err?.message === 'string' ? err.message : `${provider === 'google' ? 'Google' : 'Apple'}-Login fehlgeschlagen. Bitte versuche es erneut.`);
       }
     } finally {
