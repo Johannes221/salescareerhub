@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyIdToken, verifySessionCookie } from './auth/server';
-import { AUTH_SESSION_COOKIE } from './auth/shared';
+import { AUTH_SESSION_COOKIE, normalizeEmail } from './auth/shared';
 import { COMPANY_MEMBER_ROLES, ROLES, type CompanyMemberRole, type Role } from './config';
 import { prisma } from './db';
 
@@ -102,7 +102,7 @@ async function verifyRequest(req: NextRequest) {
   return verifySessionCookie(sessionCookie);
 }
 
-async function findAuthUserByFirebaseUid(firebaseUid: string): Promise<BaseAuthUser | null> {
+async function findAuthUserByFirebaseUid(firebaseUid: string, email?: string | null): Promise<BaseAuthUser | null> {
   const include: {
     candidateProfile?: true;
     company?: true;
@@ -117,6 +117,34 @@ async function findAuthUserByFirebaseUid(firebaseUid: string): Promise<BaseAuthU
     try {
       return await (prisma.user as any).findUnique({
         where: { firebaseUid },
+        include,
+      }) as BaseAuthUser | null;
+    } catch (error) {
+      const unknownField = getUnknownPrismaField(error);
+
+      if (unknownField === 'managedCompany' && include.managedCompany) {
+        delete include.managedCompany;
+        continue;
+      }
+
+      if (unknownField === 'firebaseUid') {
+        break;
+      }
+
+      throw error;
+    }
+  }
+
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await (prisma.user as any).findUnique({
+        where: { email: normalizedEmail },
         include,
       }) as BaseAuthUser | null;
     } catch (error) {
@@ -140,7 +168,7 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
       return null;
     }
 
-    const user = await findAuthUserByFirebaseUid(decoded.uid);
+    const user = await findAuthUserByFirebaseUid(decoded.uid, decoded.email);
 
     if (!user?.isActive) {
       return null;

@@ -19,6 +19,18 @@ function getUnknownPrismaField(error: unknown) {
   return match?.[1] ?? null;
 }
 
+async function findExistingUser(firebaseUid: string, email: string) {
+  try {
+    return await prisma.user.findUnique({ where: { firebaseUid } });
+  } catch (error) {
+    if (getUnknownPrismaField(error) !== 'firebaseUid') {
+      throw error;
+    }
+  }
+
+  return prisma.user.findUnique({ where: { email } });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -38,8 +50,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'E-Mail-Adresse fehlt im Auth-Provider' }, { status: 400 });
     }
 
-    const existingByUid = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-    const existingByEmail = existingByUid
+    const existingByUid = await findExistingUser(decoded.uid, normalizedEmail);
+    const existingByEmail = existingByUid?.email === normalizedEmail
       ? null
       : await prisma.user.findUnique({ where: { email: normalizedEmail } });
 

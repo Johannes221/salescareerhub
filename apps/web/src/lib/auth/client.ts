@@ -168,7 +168,7 @@ export async function syncCurrentUser(payload?: {
     throw new Error(data?.error || 'Benutzer konnte nicht synchronisiert werden.');
   }
 
-  await establishServerSession(token);
+  await establishServerSession(token).catch(() => undefined);
 
   return response.json().catch(() => null);
 }

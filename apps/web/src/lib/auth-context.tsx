@@ -28,7 +28,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchDbUser = async () => {
     try {
       const { establishServerSession, getIdToken } = await import('@/lib/auth/client');
-      const fetchCurrentUser = async () => fetch('/api/auth/me', { credentials: 'include' });
+      const fetchCurrentUser = async (token?: string | null) => fetch('/api/auth/me', {
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
 
       let res = await fetchCurrentUser();
 
@@ -39,8 +42,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        await establishServerSession(token);
-        res = await fetchCurrentUser();
+        try {
+          await establishServerSession(token);
+          res = await fetchCurrentUser();
+        } catch {
+          res = await fetchCurrentUser(token);
+        }
       }
 
       if (!res.ok) {
