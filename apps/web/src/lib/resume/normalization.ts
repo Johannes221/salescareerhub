@@ -5,6 +5,7 @@ import type {
   Seniority,
   WorkModel,
   ResumeStation,
+  ResumeEducation,
   LanguageEntry,
   ExtractField,
 } from './schemas';
@@ -173,6 +174,56 @@ export function dedupeSkills(skills: string[]): string[] {
   return Array.from(seen.values());
 }
 
+function normalizeName(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function inferNamePartsFromContact(email: string | null | undefined, linkedinUrl: string | null | undefined) {
+  const parseTokens = (raw: string | null | undefined) => {
+    if (!raw) return [];
+    return raw
+      .split(/[._\-\/]+/)
+      .map((part) => part.trim())
+      .filter((part) => /^[a-zA-ZäöüÄÖÜß]{2,}$/.test(part));
+  };
+
+  const emailTokens = parseTokens(email?.split('@')[0] || null);
+  if (emailTokens.length >= 2) {
+    return {
+      firstName: normalizeName(emailTokens[0]),
+      lastName: normalizeName(emailTokens.slice(1).join(' ')),
+    };
+  }
+
+  const linkedinMatch = linkedinUrl?.match(/linkedin\.com\/in\/([^/?#]+)/i);
+  const linkedinTokens = parseTokens(linkedinMatch?.[1] || null);
+  if (linkedinTokens.length >= 2) {
+    return {
+      firstName: normalizeName(linkedinTokens[0]),
+      lastName: normalizeName(linkedinTokens.slice(1).join(' ')),
+    };
+  }
+
+  return { firstName: null, lastName: null };
+}
+
+function normalizeEducations(educations: ResumeEducation[]): ResumeEducation[] {
+  return educations
+    .map((education) => ({
+      degree: education.degree?.trim() || null,
+      institution: education.institution?.trim() || null,
+      startYear: education.startYear?.trim() || null,
+      endYear: education.endYear?.trim() || null,
+    }))
+    .filter((education) => education.degree || education.institution || education.startYear || education.endYear);
+}
+
 // ─── Experience Years Calculation ───────────────────────────
 export function computeExperienceYearsFromRoles(
   stations: ResumeStation[],
@@ -271,6 +322,9 @@ export function normalizeExtractedResume(
   raw: ExtractedResumeRaw,
 ): { profile: NormalizedCandidateProfile; warnings: string[] } {
   const warnings: string[] = [];
+  const inferredNameParts = inferNamePartsFromContact(raw.email, raw.linkedinUrl);
+  const normalizedFirstName = normalizeName(raw.vorname) || inferredNameParts.firstName;
+  const normalizedLastName = normalizeName(raw.nachname) || inferredNameParts.lastName;
 
   // Normalize role
   const normalizedRole = normalizeRoleTitle(raw.aktuelleRolle);
@@ -298,6 +352,7 @@ export function normalizeExtractedResume(
 
   // Deduplicate skills
   const normalizedSkills = dedupeSkills(raw.skills || []);
+  const normalizedEducations = normalizeEducations(raw.ausbildungen || []);
 
   // Compute experience from stations if not given
   let experienceYears = raw.berufserfahrungJahre;
@@ -330,6 +385,8 @@ export function normalizeExtractedResume(
   });
 
   const profile: NormalizedCandidateProfile = {
+    vorname: f(normalizedFirstName || null, normalizedFirstName ? 'high' : undefined as unknown as ConfidenceLevel),
+    nachname: f(normalizedLastName || null, normalizedLastName ? 'high' : undefined as unknown as ConfidenceLevel),
     aktuelleRolle: f(normalizedRole, normalizedRole ? 'high' : undefined as unknown as ConfidenceLevel),
     zielrolle: f(raw.zielrolle || null, raw.zielrolle ? 'medium' : undefined as unknown as ConfidenceLevel),
     seniority: f(seniority || null, seniorityConfidence),
@@ -340,6 +397,7 @@ export function normalizeExtractedResume(
     gehaltBaseJahr: f(gehaltBase, gehaltBase ? 'medium' : undefined as unknown as ConfidenceLevel),
     gehaltOTEJahr: f(gehaltOTE, gehaltOTE ? 'medium' : undefined as unknown as ConfidenceLevel),
     berufsstationen: f(raw.berufsstationen || [], (raw.berufsstationen || []).length > 0 ? 'high' : undefined as unknown as ConfidenceLevel),
+    ausbildungen: f(normalizedEducations, normalizedEducations.length > 0 ? 'high' : undefined as unknown as ConfidenceLevel),
     standort: f(raw.standort || null, raw.standort ? 'high' : undefined as unknown as ConfidenceLevel),
     arbeitsmodellPraeferenz: f(workModel, workModel ? 'medium' : undefined as unknown as ConfidenceLevel),
     telefon: f(raw.telefon || null, raw.telefon ? 'high' : undefined as unknown as ConfidenceLevel),
@@ -352,6 +410,7 @@ export function normalizeExtractedResume(
   if (!raw.zielrolle) warnings.push('Zielrolle konnte nicht sicher erkannt werden.');
   if (normalizedSkills.length === 0) warnings.push('Keine Skills erkannt.');
   if (normalizedLanguages.length === 0) warnings.push('Keine Sprachen erkannt.');
+  if (!normalizedFirstName || !normalizedLastName) warnings.push('Vor- oder Nachname konnte nicht sicher erkannt werden.');
 
   return { profile, warnings };
 }

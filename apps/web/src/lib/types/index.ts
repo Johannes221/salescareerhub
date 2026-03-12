@@ -59,6 +59,7 @@ export interface CandidateProfile {
   location?: string;
   country?: Country;
   remotePreference?: RemoteType[];
+  locationPreference?: string[];
   yearsOfExperience?: number;
   currentRole?: string;
   targetRole?: JobRole | string;
@@ -78,6 +79,7 @@ export interface CandidateProfile {
   cvUploadDate?: Date | string;
   shortBio?: string;
   skills?: string[];
+  dealSizePreference?: string[];
   workExperiences?: Array<{
     id: string;
     title: string;

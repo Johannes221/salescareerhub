@@ -24,8 +24,17 @@ export const ResumeStationSchema = z.object({
   summary: z.string().nullable(),
 });
 
+export const ResumeEducationSchema = z.object({
+  degree: z.string().nullable(),
+  institution: z.string().nullable(),
+  startYear: z.string().nullable(),
+  endYear: z.string().nullable(),
+});
+
 // ─── Raw AI Extraction Schema ───────────────────────────────
 export const ExtractedResumeRawSchema = z.object({
+  vorname: z.string().nullable().optional().default(null),
+  nachname: z.string().nullable().optional().default(null),
   aktuelleRolle: z.string().nullable().optional().default(null),
   zielrolle: z.string().nullable().optional().default(null),
   seniority: SeniorityEnum.nullable().optional().default(null),
@@ -36,6 +45,7 @@ export const ExtractedResumeRawSchema = z.object({
   gehaltBaseJahr: z.number().nullable().optional().default(null),
   gehaltOTEJahr: z.number().nullable().optional().default(null),
   berufsstationen: z.array(ResumeStationSchema).optional().default([]),
+  ausbildungen: z.array(ResumeEducationSchema).optional().default([]),
   standort: z.string().nullable().optional().default(null),
   arbeitsmodellPraeferenz: WorkModelEnum.nullable().optional().default(null),
   telefon: z.string().nullable().optional().default(null),
@@ -53,6 +63,8 @@ export function extractFieldSchema<T extends z.ZodType>(valueSchema: T) {
 
 // ─── Normalized Candidate Profile ───────────────────────────
 export const NormalizedCandidateProfileSchema = z.object({
+  vorname: extractFieldSchema(z.string().nullable()),
+  nachname: extractFieldSchema(z.string().nullable()),
   aktuelleRolle: extractFieldSchema(z.string().nullable()),
   zielrolle: extractFieldSchema(z.string().nullable()),
   seniority: extractFieldSchema(SeniorityEnum.nullable()),
@@ -63,6 +75,7 @@ export const NormalizedCandidateProfileSchema = z.object({
   gehaltBaseJahr: extractFieldSchema(z.number().nullable()),
   gehaltOTEJahr: extractFieldSchema(z.number().nullable()),
   berufsstationen: extractFieldSchema(z.array(ResumeStationSchema)),
+  ausbildungen: extractFieldSchema(z.array(ResumeEducationSchema)),
   standort: extractFieldSchema(z.string().nullable()),
   arbeitsmodellPraeferenz: extractFieldSchema(WorkModelEnum.nullable()),
   telefon: extractFieldSchema(z.string().nullable()),
@@ -100,6 +113,7 @@ export type WorkModel = z.infer<typeof WorkModelEnum>;
 export type ConfidenceLevel = z.infer<typeof ConfidenceLevelEnum>;
 export type LanguageEntry = z.infer<typeof LanguageEntrySchema>;
 export type ResumeStation = z.infer<typeof ResumeStationSchema>;
+export type ResumeEducation = z.infer<typeof ResumeEducationSchema>;
 export type ExtractedResumeRaw = z.infer<typeof ExtractedResumeRawSchema>;
 export type ExtractField<T> = { value: T; confidence?: ConfidenceLevel };
 export type NormalizedCandidateProfile = z.infer<typeof NormalizedCandidateProfileSchema>;

@@ -60,6 +60,8 @@ describe('ExtractedResumeRawSchema', () => {
 describe('NormalizedCandidateProfileSchema', () => {
   it('validates a normalized profile with confidence', () => {
     const valid = {
+      vorname: { value: 'Anna', confidence: 'high' },
+      nachname: { value: 'Schmidt', confidence: 'high' },
       aktuelleRolle: { value: 'Account Executive', confidence: 'high' },
       zielrolle: { value: null },
       seniority: { value: 'senior', confidence: 'medium' },
@@ -70,6 +72,7 @@ describe('NormalizedCandidateProfileSchema', () => {
       gehaltBaseJahr: { value: null },
       gehaltOTEJahr: { value: null },
       berufsstationen: { value: [], confidence: 'high' },
+      ausbildungen: { value: [], confidence: 'high' },
       standort: { value: 'Berlin', confidence: 'high' },
       arbeitsmodellPraeferenz: { value: 'remote', confidence: 'medium' },
       telefon: { value: null },

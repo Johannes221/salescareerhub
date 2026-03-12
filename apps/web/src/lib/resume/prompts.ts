@@ -17,11 +17,17 @@ REGELN:
 11. Zielrolle NUR, wenn im CV oder Begleittext erkennbar, sonst null.
 12. Datumsangaben so präzise wie möglich im Format YYYY-MM übernehmen. Wenn nur das Jahr bekannt ist, YYYY verwenden.
 13. Kein Markdown in der Ausgabe.
+14. Vorname und Nachname separat extrahieren, wenn im Lebenslauf erkennbar.
+15. Extrahiere ALLE einzelnen Berufsstationen separat. Wenn dieselbe Firma mehrere Rollen enthält, muss jede Rolle ein eigener Eintrag in "berufsstationen" sein.
+16. Für jede Berufsstation soll "summary" eine kurze präzise Aufgaben- oder Verantwortungsbeschreibung enthalten, falls aus dem CV ableitbar. Sonst null.
+17. Extrahiere auch Ausbildungsstationen separat in "ausbildungen".
 
 AUSGABEFORMAT:
 Antworte ausschließlich mit einem validen JSON-Objekt im folgenden Schema. Keine Erklärungen, kein Markdown, nur JSON.
 
 {
+  "vorname": string | null,
+  "nachname": string | null,
   "aktuelleRolle": string | null,
   "zielrolle": string | null,
   "seniority": "junior" | "mid" | "senior" | "lead" | "manager" | "director" | "vp" | "c_level" | "unknown" | null,
@@ -38,6 +44,12 @@ Antworte ausschließlich mit einem validen JSON-Objekt im folgenden Schema. Kein
     "endDate": string | null,
     "isCurrent": boolean,
     "summary": string | null
+  }],
+  "ausbildungen": [{
+    "degree": string | null,
+    "institution": string | null,
+    "startYear": string | null,
+    "endYear": string | null
   }],
   "standort": string | null,
   "arbeitsmodellPraeferenz": "remote" | "hybrid" | "onsite" | "unknown" | null,

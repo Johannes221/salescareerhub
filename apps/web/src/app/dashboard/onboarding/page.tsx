@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ArrowRight, Building2, User } from 'lucide-react';
 import { CandidateOnboardingWizard } from '@/components/candidate-onboarding-wizard';
@@ -9,9 +9,11 @@ import { CandidateOnboardingWizard } from '@/components/candidate-onboarding-wiz
 export default function OnboardingPage() {
   const { dbUser } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get('mode') === 'edit';
 
   useEffect(() => {
-    if (!dbUser?.onboardingCompleted) {
+    if (!dbUser?.onboardingCompleted || isEditMode) {
       return;
     }
 
@@ -22,11 +24,11 @@ export default function OnboardingPage() {
         : '/dashboard/candidate';
 
     router.push(target);
-  }, [dbUser, router]);
+  }, [dbUser, isEditMode, router]);
 
   if (!dbUser) return null;
 
-  if (dbUser.role === 'candidate' && !dbUser.onboardingCompleted) {
+  if (dbUser.role === 'candidate' && (!dbUser.onboardingCompleted || isEditMode)) {
     return <CandidateOnboardingWizard entryPoint="onboarding" />;
   }
 

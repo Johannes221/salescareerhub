@@ -30,6 +30,7 @@ import {
   COMPANY_TYPE_OPTIONS,
 } from '@/lib/config';
 import { cn, deriveSeniorityFromYears } from '@/lib/utils';
+import { mapResumeProfileToCandidateSeed } from '@/lib/resume/onboarding-mapping';
 
 // ─── Types ──────────────────────────────────────────────────
 interface WorkExperience {
@@ -73,7 +74,7 @@ interface WizardData {
   // Step 3: Work models
   remotePreference: string[];
   // Step 4: Location preference
-  locationPreference: string;
+  locationPreference: string[];
   // Step 5: Roles
   currentRole: string;
   desiredJobRoles: string[];
@@ -86,7 +87,7 @@ interface WizardData {
   // Step 8: Sales specific
   desiredIndustries: string[];
   salesCycleLength: string;
-  averageDealSize: string;
+  dealSizePreference: string[];
   salesMotionExperience: string[];
   // Step 9: Skills & Languages
   skills: string[];
@@ -117,7 +118,7 @@ const INITIAL_DATA: WizardData = {
   country: 'Deutschland',
   googlePlaceId: '',
   remotePreference: [],
-  locationPreference: '',
+  locationPreference: [],
   currentRole: '',
   desiredJobRoles: [],
   yearsOfExperience: 0,
@@ -126,7 +127,7 @@ const INITIAL_DATA: WizardData = {
   educations: [],
   desiredIndustries: [],
   salesCycleLength: '',
-  averageDealSize: '',
+  dealSizePreference: [],
   salesMotionExperience: [],
   skills: [],
   languageProficiencies: [{ language: 'Deutsch', level: 'Muttersprachliches Niveau' }],
@@ -504,11 +505,13 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
             country: d.country || 'Deutschland',
             googlePlaceId: d.googlePlaceId || '',
             remotePreference: d.remotePreference || [],
+            locationPreference: d.locationPreference || [],
             currentRole: d.currentRole || '',
             desiredJobRoles: d.desiredJobRoles || [],
             yearsOfExperience: d.yearsOfExperience ?? 0,
             seniority: d.seniority || '',
             desiredIndustries: d.desiredIndustries || [],
+            dealSizePreference: d.dealSizePreference || [],
             skills: d.skills || [],
             languageProficiencies: d.languageProficiencies?.length
               ? d.languageProficiencies
@@ -562,45 +565,40 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       }
 
       const extracted = payload.extracted;
-      const v = (field: any) => field?.value;
-
-      // Map extracted data to wizard data
-      const stations: WorkExperience[] = (v(extracted.berufsstationen) || []).map(
-        (s: any) => ({
-          id: generateId(),
-          title: s.title || '',
-          company: s.company || '',
-          startDate: s.startDate || '',
-          endDate: s.endDate || '',
-          isCurrent: s.isCurrent || false,
-          summary: s.summary || '',
-        }),
-      );
-
-      const languages: LanguageEntry[] = (v(extracted.sprachen) || []).map(
-        (l: any) => ({
-          language: l.sprache || l.language || '',
-          level: l.level || 'Konversationssicher',
-        }),
+      const mapped = mapResumeProfileToCandidateSeed(
+        extracted,
+        {
+          email: data.email || dbUser?.email || '',
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          languageProficiencies: data.languageProficiencies,
+          salaryExpectationBase: data.salaryExpectationBase,
+          salaryExpectationOte: data.salaryExpectationOte,
+        },
+        generateId,
       );
 
       update({
         cvFileName: file.name,
-        onboardingSource: 'cv',
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        email: v(extracted.email) || data.email || dbUser?.email || '',
-        phone: v(extracted.telefon) || '',
-        linkedinUrl: v(extracted.linkedinUrl) || '',
-        location: v(extracted.standort) || '',
-        currentRole: v(extracted.aktuelleRolle) || '',
-        yearsOfExperience: v(extracted.berufserfahrungJahre) ?? 0,
-        skills: v(extracted.skills) || [],
-        workExperiences: stations,
-        languageProficiencies: languages.length > 0 ? languages : data.languageProficiencies,
-        salaryExpectationBase: v(extracted.gehaltBaseJahr) || data.salaryExpectationBase,
-        salaryExpectationOte: v(extracted.gehaltOTEJahr) || data.salaryExpectationOte,
-        noticePeriod: v(extracted.kuendigungsfrist) || '',
+        onboardingSource: mapped.onboardingSource,
+        firstName: mapped.firstName,
+        lastName: mapped.lastName,
+        email: mapped.email,
+        phone: mapped.phone,
+        linkedinUrl: mapped.linkedinUrl,
+        location: mapped.location,
+        remotePreference: mapped.remotePreference,
+        currentRole: mapped.currentRole,
+        desiredJobRoles: mapped.desiredJobRoles,
+        yearsOfExperience: mapped.yearsOfExperience,
+        seniority: mapped.seniority,
+        skills: mapped.skills,
+        workExperiences: mapped.workExperiences,
+        educations: mapped.educations,
+        languageProficiencies: mapped.languageProficiencies,
+        salaryExpectationBase: mapped.salaryExpectationBase,
+        salaryExpectationOte: mapped.salaryExpectationOte,
+        noticePeriod: mapped.noticePeriod,
       });
 
       // Also upload the file to storage
@@ -639,12 +637,14 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
         country: data.country,
         googlePlaceId: data.googlePlaceId,
         remotePreference: data.remotePreference,
+        locationPreference: data.locationPreference,
         currentRole: data.currentRole,
         targetRole: data.desiredJobRoles[0] || '',
         desiredJobRoles: data.desiredJobRoles,
         yearsOfExperience: data.yearsOfExperience,
         seniority: derivedSeniority || data.seniority,
         desiredIndustries: data.desiredIndustries,
+        dealSizePreference: data.dealSizePreference,
         skills: data.skills,
         languages: data.languageProficiencies.map((l) => l.language).filter(Boolean),
         languageProficiencies: data.languageProficiencies,
@@ -691,7 +691,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
     switch (step) {
       case 1: return !!data.firstName && !!data.lastName && !!data.email;
       case 2: return data.remotePreference.length > 0;
-      case 3: return !!data.locationPreference || !!data.location;
+      case 3: return data.locationPreference.length > 0 || !!data.location;
       case 4: return data.desiredJobRoles.length > 0;
       case 5: return data.yearsOfExperience >= 0;
       default: return true;
@@ -955,8 +955,8 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
                 key={pref.value}
                 label={pref.label}
                 icon={pref.icon}
-                selected={data.locationPreference === pref.value}
-                onClick={() => update({ locationPreference: pref.value })}
+                selected={data.locationPreference.includes(pref.value)}
+                onClick={() => toggleArray('locationPreference', pref.value)}
               />
             ))}
           </div>
@@ -1482,10 +1482,10 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
                 <button
                   key={opt}
                   type="button"
-                  onClick={() => update({ averageDealSize: data.averageDealSize === opt ? '' : opt })}
+                  onClick={() => toggleArray('dealSizePreference', opt)}
                   className={cn(
                     'rounded-full border px-3 py-1.5 text-sm transition',
-                    data.averageDealSize === opt
+                    data.dealSizePreference.includes(opt)
                       ? 'border-primary bg-primary text-white'
                       : 'border-gray-200 bg-white hover:border-gray-300',
                   )}

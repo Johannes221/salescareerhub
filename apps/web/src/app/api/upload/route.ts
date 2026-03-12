@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
 import { deriveSeniorityFromYears } from '@/lib/utils';
 import { deleteCandidateDocument, uploadCandidateDocument } from '@/lib/storage/candidate-documents';
+import { mapResumeProfileToCandidateSeed } from '@/lib/resume/onboarding-mapping';
 
 const ALLOWED_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
 const MAX_FILE_SIZE_KB = 10 * 1024;
@@ -219,27 +220,12 @@ export async function POST(req: NextRequest) {
             const provider = getResumeProvider();
             const result = await provider.extractResumeData({ text: rawText, requestId: `upload-${Date.now()}` });
             const { profile } = normalizeExtractedResume(result.raw);
-
-            const v = (f: any) => f?.value;
-            const { firstName: fn, lastName: ln } = getNameParts(user.displayName, user.email);
-            extraction = {
-              firstName: fn,
-              lastName: ln,
-              email: v(profile.email) || user.email,
-              phone: v(profile.telefon) || '',
-              linkedinUrl: v(profile.linkedinUrl) || '',
-              location: v(profile.standort) || '',
-              currentRole: v(profile.aktuelleRolle) || '',
-              yearsOfExperience: v(profile.berufserfahrungJahre) ?? 0,
-              skills: v(profile.skills) || [],
-              berufsstationen: v(profile.berufsstationen) || [],
-              sprachen: v(profile.sprachen) || [],
-              seniority: v(profile.seniority) || deriveSeniorityFromYears(v(profile.berufserfahrungJahre)),
-              salaryExpectationBase: v(profile.gehaltBaseJahr) || undefined,
-              salaryExpectationOte: v(profile.gehaltOTEJahr) || undefined,
-              noticePeriod: v(profile.kuendigungsfrist) || '',
-              onboardingSource: 'cv' as const,
-            };
+            const { firstName, lastName } = getNameParts(user.displayName, user.email);
+            extraction = mapResumeProfileToCandidateSeed(profile, {
+              email: user.email,
+              firstName,
+              lastName,
+            });
           }
         }
       } catch (extractionError) {

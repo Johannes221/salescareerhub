@@ -215,6 +215,8 @@ describe('normalizeWorkModel', () => {
 describe('normalizeExtractedResume', () => {
   it('normalizes a full raw extraction', () => {
     const raw: ExtractedResumeRaw = {
+      vorname: 'Test',
+      nachname: 'User',
       aktuelleRolle: 'AE',
       zielrolle: null,
       seniority: 'senior',
@@ -230,6 +232,7 @@ describe('normalizeExtractedResume', () => {
       berufsstationen: [
         { company: 'Test GmbH', title: 'AE', startDate: '2020-01', endDate: null, isCurrent: true, summary: null },
       ],
+      ausbildungen: [],
       standort: 'Berlin',
       arbeitsmodellPraeferenz: 'remote',
       telefon: '+49 170 1234567',
@@ -253,6 +256,8 @@ describe('normalizeExtractedResume', () => {
 
   it('derives seniority from title when not provided', () => {
     const raw: ExtractedResumeRaw = {
+      vorname: null,
+      nachname: null,
       aktuelleRolle: 'Senior Account Executive',
       zielrolle: null,
       seniority: null,
@@ -263,6 +268,7 @@ describe('normalizeExtractedResume', () => {
       gehaltBaseJahr: null,
       gehaltOTEJahr: null,
       berufsstationen: [],
+      ausbildungen: [],
       standort: null,
       arbeitsmodellPraeferenz: null,
       telefon: null,

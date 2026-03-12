@@ -138,6 +138,8 @@ export async function PUT(req: NextRequest) {
     const careerGoals = uniqueStrings(values.careerGoals);
     const preferredCompanyTypes = uniqueStrings(values.preferredCompanyTypes);
     const remotePreference = uniqueStrings(values.remotePreference);
+    const locationPreference = uniqueStrings(values.locationPreference);
+    const dealSizePreference = uniqueStrings(values.dealSizePreference);
     const languageProficiencies = normalizeLanguageProficiencies(values.languageProficiencies);
     const workExperiences = normalizeWorkExperiences(values.workExperiences);
     const educations = normalizeEducations(values.educations);
@@ -157,6 +159,7 @@ export async function PUT(req: NextRequest) {
       location: values.location.trim(),
       country: values.country.trim(),
       remotePreference,
+      locationPreference,
       yearsOfExperience,
       currentRole: values.currentRole.trim(),
       targetRole: nullableString(values.targetRole) ?? desiredJobRoles[0] ?? null,
@@ -165,6 +168,10 @@ export async function PUT(req: NextRequest) {
       careerGoals,
       preferredCompanyTypes,
       seniority,
+      salesCycleLength: nullableString(values.salesCycleLength),
+      salesMotionExperience: values.salesMotionExperience.length > 0
+        ? values.salesMotionExperience.join(', ')
+        : null,
       languages,
       languageProficiencies: languageProficiencies as Prisma.InputJsonValue,
       salaryExpectationBase: Number(values.salaryExpectationBase),
@@ -176,6 +183,7 @@ export async function PUT(req: NextRequest) {
       cvUploadDate: values.cvUploadDate ? new Date(values.cvUploadDate) : null,
       shortBio: nullableString(values.shortBio),
       skills: uniqueStrings(values.skills),
+      dealSizePreference,
       workExperiences: workExperiences as Prisma.InputJsonValue,
       educations: educations as Prisma.InputJsonValue,
       googlePlaceId: nullableString(values.googlePlaceId),

@@ -74,8 +74,11 @@ model CandidateProfile {
   educations            Json?
   googlePlaceId         String?
   googlePlaceData       Json?
+  locationPreference    String[]
   onboardingStep        Int?
   onboardingSource      String?
+  dealSizePreference    String[]
+  salesCycleLength      String?
   averageDealSize       Int?
   averageSalesCycle     Int?
   quotaHistory          Json?
