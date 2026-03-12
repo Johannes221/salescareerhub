@@ -55,6 +55,50 @@ function normalizeLanguageProficiencies(
     });
 }
 
+function normalizeWorkExperiences(
+  values: Array<{
+    id: string;
+    title: string;
+    company: string;
+    startDate?: string;
+    endDate?: string;
+    isCurrent?: boolean;
+    summary?: string;
+  }> = [],
+) {
+  return values
+    .map((value) => ({
+      id: value.id.trim(),
+      title: value.title.trim(),
+      company: value.company.trim(),
+      startDate: value.startDate?.trim() || '',
+      endDate: value.endDate?.trim() || '',
+      isCurrent: Boolean(value.isCurrent),
+      summary: value.summary?.trim() || '',
+    }))
+    .filter((value) => value.id && value.title && value.company);
+}
+
+function normalizeEducations(
+  values: Array<{
+    id: string;
+    degree?: string;
+    institution?: string;
+    startYear?: string;
+    endYear?: string;
+  }> = [],
+) {
+  return values
+    .map((value) => ({
+      id: value.id.trim(),
+      degree: value.degree?.trim() || '',
+      institution: value.institution?.trim() || '',
+      startYear: value.startYear?.trim() || '',
+      endYear: value.endYear?.trim() || '',
+    }))
+    .filter((value) => value.id);
+}
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
@@ -95,6 +139,8 @@ export async function PUT(req: NextRequest) {
     const preferredCompanyTypes = uniqueStrings(values.preferredCompanyTypes);
     const remotePreference = uniqueStrings(values.remotePreference);
     const languageProficiencies = normalizeLanguageProficiencies(values.languageProficiencies);
+    const workExperiences = normalizeWorkExperiences(values.workExperiences);
+    const educations = normalizeEducations(values.educations);
     const languages = uniqueStrings([
       ...values.languages,
       ...languageProficiencies.map((entry) => entry.language),
@@ -130,6 +176,8 @@ export async function PUT(req: NextRequest) {
       cvUploadDate: values.cvUploadDate ? new Date(values.cvUploadDate) : null,
       shortBio: nullableString(values.shortBio),
       skills: uniqueStrings(values.skills),
+      workExperiences: workExperiences as Prisma.InputJsonValue,
+      educations: educations as Prisma.InputJsonValue,
       googlePlaceId: nullableString(values.googlePlaceId),
       googlePlaceData: values.googlePlaceData
         ? values.googlePlaceData as Prisma.InputJsonValue

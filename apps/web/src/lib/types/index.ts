@@ -78,6 +78,22 @@ export interface CandidateProfile {
   cvUploadDate?: Date | string;
   shortBio?: string;
   skills?: string[];
+  workExperiences?: Array<{
+    id: string;
+    title: string;
+    company: string;
+    startDate?: string;
+    endDate?: string;
+    isCurrent?: boolean;
+    summary?: string;
+  }>;
+  educations?: Array<{
+    id: string;
+    degree?: string;
+    institution?: string;
+    startYear?: string;
+    endYear?: string;
+  }>;
   googlePlaceId?: string;
   googlePlaceData?: Record<string, unknown>;
   onboardingStep?: number;

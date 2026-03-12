@@ -70,6 +70,8 @@ model CandidateProfile {
   cvUploadDate          DateTime?
   shortBio              String?
   skills                String[]
+  workExperiences       Json?
+  educations            Json?
   googlePlaceId         String?
   googlePlaceData       Json?
   onboardingStep        Int?

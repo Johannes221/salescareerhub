@@ -212,6 +212,24 @@ export const languageProficiencySchema = z.object({
   level: z.string().trim().min(1, 'Sprachniveau ist erforderlich'),
 });
 
+export const workExperienceSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim().min(1, 'Jobtitel ist erforderlich'),
+  company: z.string().trim().min(1, 'Unternehmen ist erforderlich'),
+  startDate: z.string().trim().optional().or(z.literal('')),
+  endDate: z.string().trim().optional().or(z.literal('')),
+  isCurrent: z.boolean().default(false),
+  summary: z.string().max(2000).optional().or(z.literal('')),
+});
+
+export const educationSchema = z.object({
+  id: z.string().trim().min(1),
+  degree: z.string().trim().optional().or(z.literal('')),
+  institution: z.string().trim().optional().or(z.literal('')),
+  startYear: z.string().trim().optional().or(z.literal('')),
+  endYear: z.string().trim().optional().or(z.literal('')),
+});
+
 export function deriveSeniorityFromYears(yearsOfExperience?: number | null) {
   if (yearsOfExperience === null || yearsOfExperience === undefined || Number.isNaN(yearsOfExperience)) {
     return undefined;
@@ -252,6 +270,8 @@ export const candidateProfileSchema = z.object({
   noticePeriod: z.string().trim().optional(),
   shortBio: z.string().max(1000).optional().or(z.literal('')),
   skills: stringArraySchema().min(5, 'Bitte wähle mindestens 5 Skills aus'),
+  workExperiences: z.array(workExperienceSchema).default([]),
+  educations: z.array(educationSchema).default([]),
   cvUrl: z.string().url('Ungültige Dateiadresse').optional().or(z.literal('')),
   cvFileName: z.string().optional().or(z.literal('')),
   cvUploadDate: z.any().optional(),

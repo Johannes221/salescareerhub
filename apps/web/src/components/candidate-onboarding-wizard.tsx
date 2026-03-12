@@ -3,33 +3,27 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Briefcase,
-  Building2,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
   CloudUpload,
   GraduationCap,
   Loader2,
-  MapPin,
   Pencil,
   Plus,
   Sparkles,
   Trash2,
   Upload,
-  User,
+  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getIdToken } from '@/lib/auth/client';
 import { GooglePlacesAutocomplete } from '@/components/google-places-autocomplete';
 import {
-  JOB_ROLES,
-  REMOTE_TYPES,
-  REMOTE_TYPE_LABELS,
   SALES_INDUSTRY_OPTIONS,
   SALES_SKILL_SUGGESTIONS,
   SENIORITY_LABELS,
-  SENIORITY_LEVELS,
   LANGUAGE_OPTIONS,
   LANGUAGE_PROFICIENCY_LEVELS,
   CAREER_GOAL_OPTIONS,
@@ -238,8 +232,66 @@ const INDUSTRY_OPTIONS = [
   'CleanTech',
 ] as const;
 
+const MONTH_OPTIONS = [
+  { value: '01', label: 'Januar' },
+  { value: '02', label: 'Februar' },
+  { value: '03', label: 'März' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'Mai' },
+  { value: '06', label: 'Juni' },
+  { value: '07', label: 'Juli' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'Oktober' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'Dezember' },
+] as const;
+
+const YEAR_OPTIONS = Array.from({ length: 45 }, (_, index) => String(new Date().getFullYear() - index));
+
 function generateId() {
   return Math.random().toString(36).substring(2, 10);
+}
+
+function splitDateParts(value?: string) {
+  const normalized = value?.trim() || '';
+  if (!normalized) {
+    return { month: '', year: '' };
+  }
+
+  const [year, month] = normalized.split('-');
+  return {
+    month: month || '',
+    year: year || '',
+  };
+}
+
+function buildDateValue(month: string, year: string) {
+  if (!year) {
+    return '';
+  }
+
+  return month ? `${year}-${month}` : year;
+}
+
+function formatDateLabel(value?: string, isCurrent?: boolean): string {
+  if (isCurrent) {
+    const start = formatDateLabel(value, false);
+    return `${start} - Heute`;
+  }
+
+  const normalized = value?.trim() || '';
+  if (!normalized) {
+    return '?';
+  }
+
+  const [year, month] = normalized.split('-');
+  if (!month) {
+    return year;
+  }
+
+  const monthLabel = MONTH_OPTIONS.find((option) => option.value === month)?.label;
+  return monthLabel ? `${monthLabel} ${year}` : normalized;
 }
 
 // ─── Sub-Components ─────────────────────────────────────────
@@ -471,6 +523,8 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
             shortBio: d.shortBio || '',
             cvUrl: d.cvUrl || '',
             cvFileName: d.cvFileName || '',
+            workExperiences: Array.isArray(d.workExperiences) ? d.workExperiences : [],
+            educations: Array.isArray(d.educations) ? d.educations : [],
           }));
           if (entryPoint === 'profile') setStep(1);
           else setStep(Math.max(d.onboardingStep || 0, 0));
@@ -603,6 +657,8 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
         openToWork: data.openToWork,
         visibleToRecruiters: data.visibleToRecruiters,
         shortBio: data.shortBio,
+        workExperiences: data.workExperiences,
+        educations: data.educations,
         cvUrl: data.cvUrl,
         cvFileName: data.cvFileName,
         onboardingStep: TOTAL_STEPS - 1,
@@ -666,6 +722,28 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       : [...current, value];
     update({ [field]: next } as any);
   };
+
+  const updateWorkExperience = (id: string, patch: Partial<WorkExperience>) => {
+    update({
+      workExperiences: data.workExperiences.map((entry) =>
+        entry.id === id ? { ...entry, ...patch } : entry,
+      ),
+    });
+  };
+
+  const removeWorkExperience = (id: string) => {
+    update({
+      workExperiences: data.workExperiences.filter((entry) => entry.id !== id),
+    });
+
+    if (editingExperience === id) {
+      setEditingExperience(null);
+    }
+  };
+
+  const activeWorkExperience = editingExperience
+    ? data.workExperiences.find((entry) => entry.id === editingExperience) || null
+    : null;
 
   // ─── Render ──────────────────────────────────────
   if (!dbUser) return null;
@@ -1000,144 +1078,46 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
 
             <div className="space-y-2">
               {data.workExperiences.map((exp) => (
-                <div key={exp.id} className={cn(
-                  'rounded-lg border p-3 transition',
-                  (!exp.title || !exp.company) && 'border-red-200 bg-red-50/50',
-                )}>
-                  {editingExperience === exp.id ? (
-                    <div className="space-y-3">
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Stellenbezeichnung *</label>
-                          <input
-                            value={exp.title}
-                            onChange={(e) => {
-                              const updated = data.workExperiences.map((w) =>
-                                w.id === exp.id ? { ...w, title: e.target.value } : w,
-                              );
-                              update({ workExperiences: updated });
-                            }}
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                            placeholder="z.B. Account Executive"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Arbeitgeber *</label>
-                          <input
-                            value={exp.company}
-                            onChange={(e) => {
-                              const updated = data.workExperiences.map((w) =>
-                                w.id === exp.id ? { ...w, company: e.target.value } : w,
-                              );
-                              update({ workExperiences: updated });
-                            }}
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                            placeholder="z.B. INTEGRTR GmbH"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Von</label>
-                          <input
-                            type="month"
-                            value={exp.startDate}
-                            onChange={(e) => {
-                              const updated = data.workExperiences.map((w) =>
-                                w.id === exp.id ? { ...w, startDate: e.target.value } : w,
-                              );
-                              update({ workExperiences: updated });
-                            }}
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium">Bis</label>
-                          <div className="flex items-center gap-2">
-                            {!exp.isCurrent && (
-                              <input
-                                type="month"
-                                value={exp.endDate}
-                                onChange={(e) => {
-                                  const updated = data.workExperiences.map((w) =>
-                                    w.id === exp.id ? { ...w, endDate: e.target.value } : w,
-                                  );
-                                  update({ workExperiences: updated });
-                                }}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
-                              />
-                            )}
-                            <label className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-                              <input
-                                type="checkbox"
-                                checked={exp.isCurrent}
-                                onChange={(e) => {
-                                  const updated = data.workExperiences.map((w) =>
-                                    w.id === exp.id
-                                      ? { ...w, isCurrent: e.target.checked, endDate: '' }
-                                      : w,
-                                  );
-                                  update({ workExperiences: updated });
-                                }}
-                              />
-                              Heute
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium">Kurzbeschreibung</label>
-                        <textarea
-                          value={exp.summary}
-                          onChange={(e) => {
-                            const updated = data.workExperiences.map((w) =>
-                              w.id === exp.id ? { ...w, summary: e.target.value } : w,
-                            );
-                            update({ workExperiences: updated });
-                          }}
-                          rows={2}
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          placeholder="Was waren deine Hauptaufgaben?"
-                        />
-                      </div>
+                <div
+                  key={exp.id}
+                  className={cn(
+                    'rounded-lg border p-4 transition',
+                    (!exp.title || !exp.company) && 'border-red-200 bg-red-50/50',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {exp.title || 'Kein Jobtitel'} @ {exp.company || 'Kein Unternehmen'}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {exp.isCurrent
+                          ? formatDateLabel(exp.startDate, true)
+                          : `${formatDateLabel(exp.startDate)} - ${formatDateLabel(exp.endDate)}`}
+                      </p>
+                      {exp.summary && (
+                        <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                          {exp.summary}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => setEditingExperience(null)}
-                        className="text-sm font-medium text-primary hover:underline"
+                        onClick={() => setEditingExperience(exp.id)}
+                        className="rounded p-1.5 hover:bg-gray-100"
                       >
-                        Fertig
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeWorkExperience(exp.id)}
+                        className="rounded p-1.5 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
                       </button>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm">
-                          {exp.title || 'Keine Bezeichnung'} @ {exp.company || 'Kein Arbeitgeber'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {exp.startDate || '?'} - {exp.isCurrent ? 'Heute' : exp.endDate || '?'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setEditingExperience(exp.id)}
-                          className="rounded p-1 hover:bg-gray-100"
-                        >
-                          <Pencil className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            update({
-                              workExperiences: data.workExperiences.filter((w) => w.id !== exp.id),
-                            })
-                          }
-                          className="rounded p-1 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               ))}
               {data.workExperiences.length === 0 && (
@@ -1146,6 +1126,169 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
                 </p>
               )}
             </div>
+
+            {activeWorkExperience && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+                <div className="w-full max-w-2xl rounded-[28px] bg-white shadow-2xl">
+                  <div className="flex items-center justify-between px-6 pb-2 pt-6">
+                    <h3 className="text-2xl font-semibold text-foreground">Eintrag bearbeiten</h3>
+                    <button
+                      type="button"
+                      onClick={() => setEditingExperience(null)}
+                      className="rounded p-1.5 text-muted-foreground hover:bg-gray-100"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-5 px-6 py-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Jobtitel*</label>
+                      <input
+                        value={activeWorkExperience.title}
+                        onChange={(e) => updateWorkExperience(activeWorkExperience.id, { title: e.target.value })}
+                        className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Unternehmen*</label>
+                      <input
+                        value={activeWorkExperience.company}
+                        onChange={(e) => updateWorkExperience(activeWorkExperience.id, { company: e.target.value })}
+                        className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Startdatum*</label>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <select
+                          value={splitDateParts(activeWorkExperience.startDate).month}
+                          onChange={(e) =>
+                            updateWorkExperience(activeWorkExperience.id, {
+                              startDate: buildDateValue(
+                                e.target.value,
+                                splitDateParts(activeWorkExperience.startDate).year,
+                              ),
+                            })
+                          }
+                          className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
+                        >
+                          <option value="">Monat</option>
+                          {MONTH_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={splitDateParts(activeWorkExperience.startDate).year}
+                          onChange={(e) =>
+                            updateWorkExperience(activeWorkExperience.id, {
+                              startDate: buildDateValue(
+                                splitDateParts(activeWorkExperience.startDate).month,
+                                e.target.value,
+                              ),
+                            })
+                          }
+                          className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
+                        >
+                          <option value="">Jahr</option>
+                          {YEAR_OPTIONS.map((year) => (
+                            <option key={year} value={year}>
+                              {year}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        checked={activeWorkExperience.isCurrent}
+                        onChange={(e) =>
+                          updateWorkExperience(activeWorkExperience.id, {
+                            isCurrent: e.target.checked,
+                            endDate: e.target.checked ? '' : activeWorkExperience.endDate,
+                          })
+                        }
+                        className="h-4 w-4 accent-primary"
+                      />
+                      Ich arbeite aktuell hier
+                    </label>
+
+                    {!activeWorkExperience.isCurrent && (
+                      <div>
+                        <label className="mb-2 block text-sm font-medium">Enddatum*</label>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <select
+                            value={splitDateParts(activeWorkExperience.endDate).month}
+                            onChange={(e) =>
+                              updateWorkExperience(activeWorkExperience.id, {
+                                endDate: buildDateValue(
+                                  e.target.value,
+                                  splitDateParts(activeWorkExperience.endDate).year,
+                                ),
+                              })
+                            }
+                            className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
+                          >
+                            <option value="">Monat</option>
+                            {MONTH_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={splitDateParts(activeWorkExperience.endDate).year}
+                            onChange={(e) =>
+                              updateWorkExperience(activeWorkExperience.id, {
+                                endDate: buildDateValue(
+                                  splitDateParts(activeWorkExperience.endDate).month,
+                                  e.target.value,
+                                ),
+                              })
+                            }
+                            className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm"
+                          >
+                            <option value="">Jahr</option>
+                            {YEAR_OPTIONS.map((year) => (
+                              <option key={year} value={year}>
+                                {year}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Beschreibung (optional)</label>
+                      <textarea
+                        value={activeWorkExperience.summary}
+                        onChange={(e) => updateWorkExperience(activeWorkExperience.id, { summary: e.target.value })}
+                        rows={4}
+                        className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm"
+                        placeholder="Kurzbeschreibung deiner Aufgaben, Erfolge oder Verantwortlichkeiten"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end border-t px-6 py-5">
+                    <button
+                      type="button"
+                      onClick={() => setEditingExperience(null)}
+                      className="rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition hover:bg-primary/90"
+                    >
+                      Speichern
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Education */}

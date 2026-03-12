@@ -70,6 +70,8 @@ function buildDefaultValues(seed?: Partial<CandidateProfileFormValues>): Candida
     noticePeriod: seed?.noticePeriod || '',
     shortBio: seed?.shortBio || '',
     skills: seed?.skills || [],
+    workExperiences: seed?.workExperiences || [],
+    educations: seed?.educations || [],
     cvUrl: seed?.cvUrl || '',
     cvFileName: seed?.cvFileName || '',
     cvUploadDate: seed?.cvUploadDate,
