@@ -51,6 +51,8 @@ type ArrayField =
   | 'dealSizePreference'
   | 'salesMotionExperience'
   | 'industriesExperience'
+  | 'territoryExperience'
+  | 'salesFrameworkExperience'
   | 'locationPreference';
 
 type LanguageEntry = {
@@ -82,7 +84,7 @@ type EditableProfile = {
   salaryExpectationOte: number;
   salaryExpectationCurrency: string;
   noticePeriod: string;
-  salesCycleLength: string;
+  salesCycleLength: string[];
   skills: string[];
   dealSizePreference: string[];
   salesMotionExperience: string[];
@@ -99,6 +101,8 @@ type EditableProfile = {
   largestDealClosed: string;
   averageSalesCycle: string;
   territorySize: string;
+  territoryExperience: string[];
+  salesFrameworkExperience: string[];
   industriesExperience: string[];
 };
 
@@ -121,6 +125,43 @@ const LOCATION_PREFERENCE_OPTIONS = [
 const ENTRY_LEVEL_OPTION = 'Noch keine direkte Sales-Erfahrung';
 const DEAL_SIZE_OPTIONS = [ENTRY_LEVEL_OPTION, '< 10k €', '10k - 50k €', '50k - 100k €', '100k - 500k €', '500k+ €'] as const;
 const SALES_CYCLE_OPTIONS = [ENTRY_LEVEL_OPTION, '< 1 Monat', '1-3 Monate', '3-6 Monate', '6-12 Monate', '12+ Monate'] as const;
+const SALES_MOTION_MIX_OPTIONS = ['100% Inbound', 'Ausgewogen', '100% Outbound'] as const;
+const LEGACY_SALES_MOTION_MIX_OPTIONS = ['Vor allem Inbound', 'Ausgewogen zwischen Inbound und Outbound', 'Vor allem Outbound'] as const;
+const SALES_FRAMEWORK_PREFIX = 'Framework: ';
+const TERRITORY_OPTIONS = [
+  'DACH',
+  'Deutschland',
+  'Österreich',
+  'Schweiz',
+  'EMEA',
+  'Benelux',
+  'CEE',
+  'UK & Ireland',
+  'US',
+  'APAC',
+  'Norddeutschland',
+  'Süddeutschland',
+  'Westdeutschland',
+  'Ostdeutschland',
+  'Named Accounts',
+  'Bestandskunden',
+  'Greenfield',
+  'SMB',
+  'Mid-Market',
+  'Enterprise',
+] as const;
+const SALES_FRAMEWORK_OPTIONS = [
+  'MEDDIC',
+  'MEDDPICC',
+  'MEDDICC',
+  'SPIN',
+  'BANT',
+  'Challenger Sale',
+  'Sandler',
+  'Command of the Message',
+  'Solution Selling',
+  'Value Selling',
+] as const;
 const SELECT_CLASSES = 'flex h-11 w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-ring/20';
 
 function toStringArray(value: unknown): string[] {
@@ -133,6 +174,53 @@ function toStringArray(value: unknown): string[] {
   }
 
   return [];
+}
+
+function getMotionMixValue(values: string[]) {
+  if (values.includes('100% Inbound') || values.includes('Vor allem Inbound')) return 0;
+  if (values.includes('100% Outbound') || values.includes('Vor allem Outbound')) return 100;
+  return 50;
+}
+
+function getMotionMixLabel(value: number) {
+  if (value <= 10) return '100% Inbound';
+  if (value >= 90) return '100% Outbound';
+  return 'Ausgewogen';
+}
+
+function withMotionMix(values: string[], mixValue: number) {
+  const nextValues = values.filter(
+    (entry) => !SALES_MOTION_MIX_OPTIONS.includes(entry as typeof SALES_MOTION_MIX_OPTIONS[number])
+      && !LEGACY_SALES_MOTION_MIX_OPTIONS.includes(entry as typeof LEGACY_SALES_MOTION_MIX_OPTIONS[number]),
+  );
+  return [...nextValues, getMotionMixLabel(mixValue)];
+}
+
+function encodeFrameworkValue(value: string) {
+  return `${SALES_FRAMEWORK_PREFIX}${value}`;
+}
+
+function decodeFrameworkValue(value: string) {
+  return value.replace(SALES_FRAMEWORK_PREFIX, '').trim();
+}
+
+function isFrameworkValue(value: string) {
+  return value.startsWith(SALES_FRAMEWORK_PREFIX);
+}
+
+function extractFrameworkValues(values: string[]) {
+  return values.filter(isFrameworkValue).map(decodeFrameworkValue).filter(Boolean);
+}
+
+function stripFrameworkValues(values: string[]) {
+  return values.filter((value) => !isFrameworkValue(value));
+}
+
+function mergeSkillsWithFrameworks(skills: string[], frameworks: string[]) {
+  return Array.from(new Set([
+    ...stripFrameworkValues(skills),
+    ...frameworks.map((value) => encodeFrameworkValue(value.trim())).filter((value) => value !== SALES_FRAMEWORK_PREFIX),
+  ]));
 }
 
 function normalizeProfile(profile: ProfileRecord): EditableProfile {
@@ -155,6 +243,7 @@ function normalizeProfile(profile: ProfileRecord): EditableProfile {
     : ['Deutsch'];
 
   const yearsOfExperience = Number(profile.yearsOfExperience ?? 0);
+  const rawSkills = toStringArray(profile.skills);
 
   return {
     firstName: String(profile.firstName || ''),
@@ -182,8 +271,8 @@ function normalizeProfile(profile: ProfileRecord): EditableProfile {
     salaryExpectationOte: Number(profile.salaryExpectationOte ?? 100000),
     salaryExpectationCurrency: String(profile.salaryExpectationCurrency || 'EUR'),
     noticePeriod: String(profile.noticePeriod || ''),
-    salesCycleLength: String(profile.salesCycleLength || ''),
-    skills: toStringArray(profile.skills),
+    salesCycleLength: toStringArray(profile.salesCycleLength),
+    skills: stripFrameworkValues(rawSkills),
     dealSizePreference: toStringArray(profile.dealSizePreference),
     salesMotionExperience: toStringArray(profile.salesMotionExperience),
     workExperiences: Array.isArray(profile.workExperiences) ? profile.workExperiences : [],
@@ -201,6 +290,8 @@ function normalizeProfile(profile: ProfileRecord): EditableProfile {
     largestDealClosed: profile.largestDealClosed ? String(profile.largestDealClosed) : '',
     averageSalesCycle: profile.averageSalesCycle ? String(profile.averageSalesCycle) : '',
     territorySize: String(profile.territorySize || ''),
+    territoryExperience: toStringArray(profile.territoryExperience || profile.territorySize),
+    salesFrameworkExperience: extractFrameworkValues(rawSkills),
     industriesExperience: toStringArray(profile.industriesExperience),
   };
 }
@@ -208,6 +299,9 @@ function normalizeProfile(profile: ProfileRecord): EditableProfile {
 function buildProfilePayload(profile: EditableProfile) {
   return {
     ...profile,
+    salesCycleLength: profile.salesCycleLength.join(', '),
+    territorySize: profile.territoryExperience.join(', ') || profile.territorySize,
+    skills: mergeSkillsWithFrameworks(profile.skills, profile.salesFrameworkExperience),
     languageProficiencies: profile.languageProficiencies,
     languages: profile.languageProficiencies.map((entry) => entry.language).filter(Boolean),
   };
@@ -256,6 +350,47 @@ export function CandidateProfileTabs({
         })),
       );
     }
+  };
+
+  const toggleExclusiveArrayValue = (field: 'salesCycleLength' | 'dealSizePreference', value: string) => {
+    const currentValues = draft[field];
+
+    if (value === ENTRY_LEVEL_OPTION) {
+      setField(field, (currentValues.includes(value) ? [] : [value]) as EditableProfile[typeof field]);
+      return;
+    }
+
+    const nextValues = currentValues.filter((entry) => entry !== ENTRY_LEVEL_OPTION);
+    setField(
+      field,
+      (nextValues.includes(value)
+        ? nextValues.filter((entry) => entry !== value)
+        : [...nextValues, value]) as EditableProfile[typeof field],
+    );
+  };
+
+  const toggleSalesMotionValue = (value: string) => {
+    const optionValues = draft.salesMotionExperience.filter(
+      (entry) => !SALES_MOTION_MIX_OPTIONS.includes(entry as typeof SALES_MOTION_MIX_OPTIONS[number])
+        && !LEGACY_SALES_MOTION_MIX_OPTIONS.includes(entry as typeof LEGACY_SALES_MOTION_MIX_OPTIONS[number]),
+    );
+
+    if (value === ENTRY_LEVEL_OPTION) {
+      setField('salesMotionExperience', optionValues.includes(value) ? [] : [value]);
+      return;
+    }
+
+    const nextOptions = optionValues.filter((entry) => entry !== ENTRY_LEVEL_OPTION);
+    const nextSelection = nextOptions.includes(value)
+      ? nextOptions.filter((entry) => entry !== value)
+      : [...nextOptions, value];
+
+    setField(
+      'salesMotionExperience',
+      nextSelection.length > 0
+        ? withMotionMix(nextSelection, getMotionMixValue(draft.salesMotionExperience))
+        : [],
+    );
   };
 
   const addTag = (field: ArrayField, value: string) => {
@@ -321,12 +456,10 @@ export function CandidateProfileTabs({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            averageDealSize: draft.averageDealSize,
             largestDealClosed: draft.largestDealClosed,
-            averageSalesCycle: draft.averageSalesCycle,
             salesMotionExperience: draft.salesMotionExperience.join(', '),
             industriesExperience: draft.industriesExperience,
-            territorySize: draft.territorySize,
+            territorySize: draft.territoryExperience.join(', ') || draft.territorySize,
           }),
         });
         const metricsPayload = await metricsResponse.json().catch(() => null);
@@ -573,35 +706,75 @@ export function CandidateProfileTabs({
                 <FormField label="Abgeleitete Seniorität" icon={TrendingUp}>
                   <Input value={deriveSeniorityFromYears(draft.yearsOfExperience) || draft.seniority} disabled className="h-11 rounded-xl bg-muted/40" />
                 </FormField>
-                <FormField label="Bisheriger Sales Cycle (optional)" icon={TrendingUp}>
-                  <select value={draft.salesCycleLength} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('salesCycleLength', e.target.value)} className={SELECT_CLASSES}>
-                    <option value="">Bitte auswählen</option>
-                    {SALES_CYCLE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </FormField>
-                <FormField label="Accounts / Territory (optional)" icon={MapPin}>
-                  <Input value={draft.territorySize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('territorySize', e.target.value)} placeholder="z. B. DACH Mid-Market, Named Accounts" className="h-11 rounded-xl" />
-                </FormField>
-                <FormField label="Ø Deal Size (optional)" icon={Wallet}>
-                  <Input type="number" value={draft.averageDealSize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageDealSize', e.target.value)} placeholder="25000" className="h-11 rounded-xl" />
-                </FormField>
                 <FormField label="Größter Deal (optional)" icon={Wallet}>
                   <Input type="number" value={draft.largestDealClosed} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('largestDealClosed', e.target.value)} placeholder="120000" className="h-11 rounded-xl" />
                 </FormField>
-                <FormField label="Ø Sales Cycle in Tagen (optional)" icon={TrendingUp} className="md:col-span-2">
-                  <Input type="number" value={draft.averageSalesCycle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageSalesCycle', e.target.value)} placeholder="60" className="h-11 rounded-xl" />
-                </FormField>
               </div>
+              <Subsection title="Sales Cycles" description="Mehrfachauswahl ist möglich. Falls noch keine direkte Sales-Erfahrung vorliegt, kannst du das explizit markieren.">
+                <ChoiceGroup
+                  options={SALES_CYCLE_OPTIONS}
+                  values={draft.salesCycleLength}
+                  onToggle={(value) => toggleExclusiveArrayValue('salesCycleLength', value)}
+                  isOptionDisabled={(value) => draft.salesCycleLength.includes(ENTRY_LEVEL_OPTION) && value !== ENTRY_LEVEL_OPTION}
+                />
+              </Subsection>
               <Subsection title="Deal Size / betreute Bandbreiten" description="Optional: Welche Dealgrößen hast du bisher vor allem betreut?">
-                <ChoiceGroup options={DEAL_SIZE_OPTIONS} values={draft.dealSizePreference} onToggle={(value) => toggleArrayValue('dealSizePreference', value)} />
+                <ChoiceGroup
+                  options={DEAL_SIZE_OPTIONS}
+                  values={draft.dealSizePreference}
+                  onToggle={(value) => toggleExclusiveArrayValue('dealSizePreference', value)}
+                  isOptionDisabled={(value) => draft.dealSizePreference.includes(ENTRY_LEVEL_OPTION) && value !== ENTRY_LEVEL_OPTION}
+                />
               </Subsection>
               <Subsection title="Sales Motion" description="Optional: Welche Motion war in deinem bisherigen Umfeld prägend?">
-                <ChoiceGroup options={SALES_MOTION_OPTIONS as unknown as readonly string[]} values={draft.salesMotionExperience} onToggle={(value) => toggleArrayValue('salesMotionExperience', value)} />
+                <ChoiceGroup
+                  options={SALES_MOTION_OPTIONS as unknown as readonly string[]}
+                  values={draft.salesMotionExperience}
+                  onToggle={(value) => toggleSalesMotionValue(value)}
+                  isOptionDisabled={(value) => draft.salesMotionExperience.includes(ENTRY_LEVEL_OPTION) && value !== ENTRY_LEVEL_OPTION}
+                />
+                <div className="mt-4 rounded-2xl border border-border/70 bg-background px-4 py-4">
+                  <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                    <span>Verteilung zwischen Inbound und Outbound</span>
+                    <span className="text-primary">{getMotionMixLabel(getMotionMixValue(draft.salesMotionExperience))}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    disabled={draft.salesMotionExperience.includes(ENTRY_LEVEL_OPTION)}
+                    value={getMotionMixValue(draft.salesMotionExperience)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salesMotionExperience', withMotionMix(draft.salesMotionExperience, Number(e.target.value)))}
+                    className="w-full accent-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  />
+                  <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                    <span>100% Inbound</span>
+                    <span>Ausgewogen</span>
+                    <span>100% Outbound</span>
+                  </div>
+                </div>
               </Subsection>
               <Subsection title="Branchen-Erfahrung" description="Welche Branchen hast du bisher betreut oder inhaltlich kennengelernt?">
                 <ChoiceGroup options={SALES_INDUSTRY_OPTIONS as unknown as readonly string[]} values={draft.industriesExperience} onToggle={(value) => toggleArrayValue('industriesExperience', value)} />
+              </Subsection>
+              <Subsection title="Accounts / Regionen / Territories" description="Wähle bestehende Regionen aus oder ergänze eigene Begriffe per Freitext.">
+                <AddableTagField
+                  values={draft.territoryExperience}
+                  suggestions={TERRITORY_OPTIONS}
+                  onAdd={(value) => addTag('territoryExperience', value)}
+                  onRemove={(value) => removeTag('territoryExperience', value)}
+                  placeholder="z. B. DACH, EMEA, Named Accounts"
+                />
+              </Subsection>
+              <Subsection title="Frameworks & Methodiken" description="Zum Beispiel MEDDIC, MEDDPICC oder SPIN.">
+                <AddableTagField
+                  values={draft.salesFrameworkExperience}
+                  suggestions={SALES_FRAMEWORK_OPTIONS}
+                  onAdd={(value) => addTag('salesFrameworkExperience', value)}
+                  onRemove={(value) => removeTag('salesFrameworkExperience', value)}
+                  placeholder="Framework hinzufügen"
+                />
               </Subsection>
             </div>
           ) : (
@@ -609,10 +782,10 @@ export function CandidateProfileTabs({
               items={[
                 { label: 'Erfahrung', value: `${normalizedProfile.yearsOfExperience || 0} Jahre`, icon: TrendingUp },
                 { label: 'Seniorität', value: SENIORITY_LABELS[normalizedProfile.seniority as keyof typeof SENIORITY_LABELS] || normalizedProfile.seniority || '–', icon: TrendingUp },
-                { label: 'Sales Cycle', value: normalizedProfile.salesCycleLength || '–', icon: TrendingUp },
-                { label: 'Ø Deal Size', value: normalizedProfile.averageDealSize ? formatCurrency(Number(normalizedProfile.averageDealSize)) : '–', icon: Wallet },
+                { label: 'Sales Cycles', value: normalizedProfile.salesCycleLength.join(', ') || '–', icon: TrendingUp },
                 { label: 'Größter Deal', value: normalizedProfile.largestDealClosed ? formatCurrency(Number(normalizedProfile.largestDealClosed)) : '–', icon: Wallet },
-                { label: 'Territory', value: normalizedProfile.territorySize || '–', icon: MapPin },
+                { label: 'Territories', value: normalizedProfile.territoryExperience.join(', ') || normalizedProfile.territorySize || '–', icon: MapPin },
+                { label: 'Frameworks', value: normalizedProfile.salesFrameworkExperience.join(', ') || '–', icon: TrendingUp },
               ]}
             />
           )}
@@ -868,29 +1041,36 @@ function ChoiceGroup({
   values,
   onToggle,
   getLabel,
+  isOptionDisabled,
 }: {
   options: readonly string[];
   values: string[];
   onToggle: (value: string) => void;
   getLabel?: (value: string) => string;
+  isOptionDisabled?: (value: string) => boolean;
 }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          onClick={() => onToggle(option)}
-          className={cn(
-            'rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
-            values.includes(option)
-              ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
-              : 'border-border/70 bg-background hover:bg-accent/40',
-          )}
-        >
-          {getLabel ? getLabel(option) : option}
-        </button>
-      ))}
+      {options.map((option) => {
+        const disabled = isOptionDisabled?.(option) ?? false;
+        return (
+          <button
+            key={option}
+            type="button"
+            disabled={disabled}
+            onClick={() => onToggle(option)}
+            className={cn(
+              'rounded-full border px-3.5 py-1.5 text-sm font-medium transition',
+              values.includes(option)
+                ? 'border-primary/40 bg-primary/10 text-primary shadow-sm'
+                : 'border-border/70 bg-background hover:bg-accent/40',
+              disabled && 'cursor-not-allowed border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted/40',
+            )}
+          >
+            {getLabel ? getLabel(option) : option}
+          </button>
+        );
+      })}
     </div>
   );
 }

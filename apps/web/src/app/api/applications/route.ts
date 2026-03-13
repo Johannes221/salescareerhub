@@ -441,7 +441,7 @@ export async function GET(req: NextRequest) {
       const applications = await prisma.application.findMany({
         where: {
           job: { companyId: user.activeCompany.id },
-          status: { in: ['forwarded', 'interview_1', 'interview_2', 'offer', 'hired', 'rejected'] },
+          status: { in: ['hiring_team', 'contract_negotiation', 'signed', 'rejected'] },
         },
         include: {
           job: { select: { title: true, slug: true } },

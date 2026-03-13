@@ -62,7 +62,7 @@ export default function CompanyBewerbungenPage() {
                       <p className="text-sm">{app.job?.title}</p>
                       <p className="text-xs text-muted-foreground">{formatRelativeDate(app.forwardedAt || app.createdAt)}</p>
                     </div>
-                    <Badge variant={app.status === 'hired' ? 'success' : app.status === 'rejected' ? 'destructive' : 'secondary'}>
+                    <Badge variant={app.status === 'signed' ? 'success' : app.status === 'rejected' ? 'destructive' : 'secondary'}>
                       {APPLICATION_STATUS_LABELS[app.status as keyof typeof APPLICATION_STATUS_LABELS] || app.status}
                     </Badge>
                   </div>

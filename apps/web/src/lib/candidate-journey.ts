@@ -93,12 +93,11 @@ type CalendarAction = {
 const ACTIVE_STAGE_FLOW = [
   'interest_expressed',
   'screening',
-  'shortlisted',
-  'forwarded',
-  'interview_1',
-  'interview_2',
-  'offer',
-  'hired',
+  'recruiter_call',
+  'briefing',
+  'hiring_team',
+  'contract_negotiation',
+  'signed',
 ] as const;
 
 const ACTIVE_STAGE_DETAILS: Record<string, { label: string; description: string; offsetDays: number }> = {
@@ -112,35 +111,30 @@ const ACTIVE_STAGE_DETAILS: Record<string, { label: string; description: string;
     description: 'Wir prüfen Track Record, Seniorität, Territory-Fit und Sales-Historie.',
     offsetDays: 2,
   },
-  shortlisted: {
+  recruiter_call: {
     label: 'Recruiter Call',
     description: 'Ein erstes Gespräch mit uns wird vorbereitet, damit wir deinen Background sauber briefen können.',
     offsetDays: 4,
   },
-  forwarded: {
+  briefing: {
     label: 'Briefing mit Recruiter',
     description: 'Vor der Weiterleitung bekommst du ein Briefing zu Rolle, Team, Deal-Umfeld und Gesprächsstrategie.',
     offsetDays: 6,
   },
-  interview_1: {
+  hiring_team: {
     label: 'Hiring Team Kennenlernen',
     description: 'Das erste Gespräch mit dem Hiring Team fokussiert Scope, Motivation und fachlichen Fit.',
     offsetDays: 9,
   },
-  interview_2: {
-    label: 'Finalrunde / Deep Dive',
-    description: 'Hier geht es tiefer in Sales Cases, Forecasting, Territory Ownership und Stakeholder-Management.',
-    offsetDays: 13,
-  },
-  offer: {
+  contract_negotiation: {
     label: 'Vertragsverhandlung',
     description: 'Compensation, Startdatum, Notice Period und finale Offer-Details werden abgestimmt.',
-    offsetDays: 17,
+    offsetDays: 14,
   },
-  hired: {
+  signed: {
     label: 'Unterschrift & Start',
     description: 'Offer angenommen, Unterlagen unterschrieben und Start vorbereitet.',
-    offsetDays: 24,
+    offsetDays: 21,
   },
 };
 
@@ -224,17 +218,15 @@ function addDays(baseDate: Date, days: number) {
 }
 
 function buildCalendarAction(status: string, applicationId: string, baseDate: Date): CalendarAction | null {
-  if (!['shortlisted', 'forwarded', 'interview_1', 'interview_2'].includes(status)) {
+  if (!['recruiter_call', 'briefing', 'hiring_team'].includes(status)) {
     return null;
   }
 
-  const slotOffsets = status === 'shortlisted'
+  const slotOffsets = status === 'recruiter_call'
     ? [2, 3, 4]
-    : status === 'forwarded'
+    : status === 'briefing'
       ? [1, 2, 5]
-      : status === 'interview_1'
-        ? [3, 4, 6]
-        : [2, 5, 7];
+      : [3, 4, 6];
 
   return {
     title: 'Verfügbare Gesprächsslots',
@@ -255,7 +247,7 @@ function buildCalendarAction(status: string, applicationId: string, baseDate: Da
 }
 
 function buildResources(status: string, hasCandidateMessage: boolean): JourneyResource[] {
-  if (status === 'offer') {
+  if (status === 'contract_negotiation') {
     return [
       { title: 'Vergütungserwartung', detail: 'Base, OTE, Bonus-Komponenten und Zielbandbreite abstimmen.', ready: true },
       { title: 'Kündigungsfrist', detail: 'Verfügbarkeitsfenster und gewünschtes Startdatum bereithalten.', ready: true },
@@ -263,7 +255,7 @@ function buildResources(status: string, hasCandidateMessage: boolean): JourneyRe
     ];
   }
 
-  if (status === 'hired') {
+  if (status === 'signed') {
     return [
       { title: 'Offer unterschrieben', detail: 'Vertragsstatus und finale Comp-Komponenten dokumentieren.', ready: true },
       { title: 'Start-Checkliste', detail: 'Onboarding, Equipment und erste 30 Tage planen.', ready: true },
@@ -480,12 +472,12 @@ export function buildApplicationJourney(application: ApplicationLike, profile?: 
     matchReasons: match.reasons,
     timeline,
     currentStepLabel: currentStep?.label || 'Bewerbung',
-    nextStep: nextStep?.label || (status === 'hired' ? 'Onboarding vorbereiten' : status === 'offer' ? 'Offer finalisieren' : 'Feedback abwarten'),
+    nextStep: nextStep?.label || (status === 'signed' ? 'Onboarding vorbereiten' : status === 'contract_negotiation' ? 'Offer finalisieren' : 'Feedback abwarten'),
     nextStepDate: nextStep?.date || null,
     overview:
-      status === 'hired'
+      status === 'signed'
         ? 'Der Prozess ist erfolgreich abgeschlossen. Fokus liegt jetzt auf Start und sauberer Übergabe.'
-        : status === 'offer'
+        : status === 'contract_negotiation'
           ? 'Du bist im Offer-Prozess. Jetzt zählen Klarheit bei Comp, Timing und Entscheidung.'
           : status === 'rejected'
             ? 'Der Prozess wurde beendet. Nutze Feedback und dein Profil für die nächsten passenden Rollen.'

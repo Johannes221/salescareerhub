@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { APPLICATION_STATUS, APPLICATION_STATUS_LABELS, type ApplicationStatus } from '@/lib/config';
 import { formatRelativeDate } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
-import { Users, Briefcase, Star, Send, MessageSquare, ChevronDown, ChevronUp, Save, CheckCircle } from 'lucide-react';
+import { Users, Briefcase, Star, Send, MessageSquare, ChevronDown, ChevronUp, Save, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function AdminApplicationsPage() {
   const { dbUser } = useAuth();
@@ -76,12 +77,11 @@ export default function AdminApplicationsPage() {
   const STATUS_COLORS: Record<string, string> = {
     interest_expressed: 'bg-blue-100 text-blue-800',
     screening: 'bg-yellow-100 text-yellow-800',
-    shortlisted: 'bg-purple-100 text-purple-800',
-    forwarded: 'bg-green-100 text-green-800',
-    interview_1: 'bg-indigo-100 text-indigo-800',
-    interview_2: 'bg-indigo-100 text-indigo-800',
-    offer: 'bg-emerald-100 text-emerald-800',
-    hired: 'bg-green-200 text-green-900',
+    recruiter_call: 'bg-purple-100 text-purple-800',
+    briefing: 'bg-indigo-100 text-indigo-800',
+    hiring_team: 'bg-cyan-100 text-cyan-800',
+    contract_negotiation: 'bg-emerald-100 text-emerald-800',
+    signed: 'bg-green-200 text-green-900',
     rejected: 'bg-red-100 text-red-800',
     withdrawn: 'bg-gray-100 text-gray-800',
   };
@@ -154,7 +154,11 @@ export default function AdminApplicationsPage() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[app.status] || 'bg-gray-100'}`}>
                       {APPLICATION_STATUS_LABELS[app.status as keyof typeof APPLICATION_STATUS_LABELS]}
                     </span>
+                    {app.fitScore && <span className="text-xs font-bold text-primary">{app.fitScore}%</span>}
                     {app.recommendedByAdmin && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+                    <Link href={`/dashboard/admin/applications/${app.id}`} className="text-xs text-primary hover:underline flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                      Details <ArrowRight className="h-3 w-3" />
+                    </Link>
                     {expandedId === app.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </div>
                 </div>

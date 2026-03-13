@@ -20,7 +20,7 @@ import {
   type JobRequirementBucket,
   type RequirementFitGroup,
 } from '@/lib/job-requirements';
-import { formatSalaryRange, formatRelativeDate, getPublicCompanyLabel } from '@/lib/utils';
+import { cn, formatSalaryRange, formatRelativeDate, getPublicCompanyLabel } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
 import { validateFile } from '@/lib/gdpr';
 import {
@@ -227,19 +227,31 @@ function BulletSection({
       </CardHeader>
       <CardContent>
         {items.length > 0 ? (
-          <ul className="space-y-3">
-            {items.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
-                <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+          <BulletList items={items} />
         ) : (
           <p className="text-sm text-muted-foreground">{emptyLabel}</p>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function BulletList({
+  items,
+  dotClassName,
+}: {
+  items: string[];
+  dotClassName?: string;
+}) {
+  return (
+    <ul className="space-y-3">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
+          <span className={cn('mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/80', dotClassName)} />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -816,14 +828,16 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                           </div>
                         </div>
 
-                        <Button className="h-12 w-full rounded-2xl" onClick={handleApplyClick}>
-                          Bewerbung starten
-                          <Send className="ml-2 h-4 w-4" />
-                        </Button>
+                        <div className="space-y-4 pt-1">
+                          <Button className="h-12 w-full rounded-2xl" onClick={handleApplyClick}>
+                            Bewerbung starten
+                            <Send className="ml-2 h-4 w-4" />
+                          </Button>
 
-                        <Link href="/dashboard/candidate/profil">
-                          <Button variant="outline" className="w-full rounded-2xl">Profil ansehen / bearbeiten</Button>
-                        </Link>
+                          <Link href="/dashboard/candidate/profil" className="block">
+                            <Button variant="outline" className="h-12 w-full rounded-2xl">Profil ansehen / bearbeiten</Button>
+                          </Link>
+                        </div>
                       </>
                     ) : !dbUser ? (
                       <div className="space-y-3">
@@ -1084,14 +1098,7 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                       <div className="space-y-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Erforderlich</p>
                         {legacyRequirementBuckets.required.length > 0 ? (
-                          <ul className="space-y-3">
-                            {legacyRequirementBuckets.required.map((item: string) => (
-                              <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
-                                <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          <BulletList items={legacyRequirementBuckets.required} />
                         ) : (
                           <p className="text-sm text-muted-foreground">Keine Pflichtanforderungen hinterlegt.</p>
                         )}
@@ -1114,14 +1121,7 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                             ))}
                           </div>
                         ) : (
-                          <ul className="space-y-3">
-                            {legacyRequirementBuckets.niceToHave.map((item: string) => (
-                              <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
-                                <span className="mt-2 h-2 w-2 rounded-full bg-primary/60" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
+                          <BulletList items={legacyRequirementBuckets.niceToHave} />
                         )}
                       </div>
                     ) : null}

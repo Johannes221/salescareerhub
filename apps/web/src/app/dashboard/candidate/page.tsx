@@ -119,7 +119,7 @@ export default function CandidateDashboard() {
 
   const { score: profileScore, missing: profileMissing } = getProfileCompletion(data.profile);
   const activeApps = data.applications.filter(
-    (a: any) => !['rejected', 'withdrawn', 'hired'].includes(a.status)
+    (a: any) => !['rejected', 'withdrawn', 'signed'].includes(a.status)
   );
   const firstName = data.profile?.firstName || dbUser?.displayName?.split(' ')[0] || '';
 

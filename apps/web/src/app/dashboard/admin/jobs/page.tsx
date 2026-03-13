@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { JOB_ROLES, SENIORITY_LEVELS, SENIORITY_LABELS, EMPLOYMENT_TYPES, EMPLOYMENT_TYPE_LABELS, REMOTE_TYPES, REMOTE_TYPE_LABELS, COUNTRIES, SOURCE_TYPE_LABELS } from '@/lib/config';
 import { formatRelativeDate } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
-import { Briefcase, CheckCircle, XCircle, Star, Building2, Sparkles, Plus } from 'lucide-react';
+import { Briefcase, CheckCircle, XCircle, Star, Building2, Sparkles, Plus, ArrowRight } from 'lucide-react';
 
 export default function AdminJobsPage() {
   const { dbUser } = useAuth();
@@ -239,6 +240,9 @@ export default function AdminJobsPage() {
                     <Button size="sm" variant="ghost" onClick={() => updateJob(job.id, { isFeatured: !job.isFeatured })}>
                       <Star className={`h-3 w-3 ${job.isFeatured ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                     </Button>
+                    <Link href={`/dashboard/admin/jobs/${job.id}`} className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                      Details <ArrowRight className="h-3 w-3" />
+                    </Link>
                   </div>
                 </div>
               </CardContent>

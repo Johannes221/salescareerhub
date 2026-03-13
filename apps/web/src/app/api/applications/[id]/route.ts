@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (fitScore !== undefined) updateData.fitScore = fitScore;
     if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
     if (recommendedByAdmin !== undefined) updateData.recommendedByAdmin = recommendedByAdmin;
-    if (status === 'forwarded') updateData.forwardedAt = new Date();
+    if (status === 'hiring_team') updateData.forwardedAt = new Date();
 
     const updated = await prisma.application.update({
       where: { id: params.id },
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       });
 
       // If forwarded, notify company
-      if (status === 'forwarded') {
+      if (status === 'hiring_team') {
         const company = await prisma.company.findUnique({ where: { id: application.job.companyId } });
         if (company) {
           await prisma.notification.create({

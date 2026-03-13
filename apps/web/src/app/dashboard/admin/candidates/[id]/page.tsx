@@ -228,7 +228,7 @@ export default function AdminCandidateDetailPage({ params }: { params: { id: str
                           variant={
                             app.status === 'rejected'
                               ? 'destructive'
-                              : app.status === 'hired'
+                              : app.status === 'signed'
                                 ? 'success'
                                 : 'secondary'
                           }

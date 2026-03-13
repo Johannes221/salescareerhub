@@ -23,12 +23,11 @@ import {
 const PIPELINE_STAGES = [
   { key: 'interest_expressed', label: 'Beworben', color: 'bg-blue-500' },
   { key: 'screening', label: 'Screening', color: 'bg-amber-500' },
-  { key: 'shortlisted', label: 'Shortlist', color: 'bg-violet-500' },
-  { key: 'forwarded', label: 'Intro', color: 'bg-indigo-500' },
-  { key: 'interview_1', label: 'Interview 1', color: 'bg-cyan-500' },
-  { key: 'interview_2', label: 'Interview 2', color: 'bg-teal-500' },
-  { key: 'offer', label: 'Angebot', color: 'bg-emerald-500' },
-  { key: 'hired', label: 'Hired', color: 'bg-green-500' },
+  { key: 'recruiter_call', label: 'Recruiter Call', color: 'bg-violet-500' },
+  { key: 'briefing', label: 'Briefing', color: 'bg-indigo-500' },
+  { key: 'hiring_team', label: 'Hiring Team', color: 'bg-cyan-500' },
+  { key: 'contract_negotiation', label: 'Verhandlung', color: 'bg-emerald-500' },
+  { key: 'signed', label: 'Unterschrift', color: 'bg-green-500' },
   { key: 'rejected', label: 'Absage', color: 'bg-red-500' },
   { key: 'withdrawn', label: 'Zurückgez.', color: 'bg-gray-400' },
 ] as const;
@@ -64,16 +63,16 @@ export default function CandidateBewerbungenPage() {
 
   const filtered = applications.filter((app: any) => {
     if (statusFilter === 'all') return true;
-    if (statusFilter === 'active') return !['rejected', 'withdrawn', 'hired'].includes(app.status);
-    if (statusFilter === 'interview') return ['interview_1', 'interview_2'].includes(app.status);
-    if (statusFilter === 'pending') return ['screening', 'shortlisted', 'forwarded'].includes(app.status);
-    if (statusFilter === 'closed') return ['rejected', 'withdrawn', 'hired'].includes(app.status);
+    if (statusFilter === 'active') return !['rejected', 'withdrawn', 'signed'].includes(app.status);
+    if (statusFilter === 'interview') return ['recruiter_call', 'briefing', 'hiring_team'].includes(app.status);
+    if (statusFilter === 'pending') return ['screening', 'recruiter_call', 'briefing'].includes(app.status);
+    if (statusFilter === 'closed') return ['rejected', 'withdrawn', 'signed'].includes(app.status);
     return true;
   });
 
-  const activeCount = applications.filter((a: any) => !['rejected', 'withdrawn', 'hired'].includes(a.status)).length;
-  const interviewCount = applications.filter((a: any) => ['interview_1', 'interview_2'].includes(a.status)).length;
-  const offerCount = applications.filter((a: any) => a.status === 'offer').length;
+  const activeCount = applications.filter((a: any) => !['rejected', 'withdrawn', 'signed'].includes(a.status)).length;
+  const interviewCount = applications.filter((a: any) => ['recruiter_call', 'briefing', 'hiring_team'].includes(a.status)).length;
+  const offerCount = applications.filter((a: any) => a.status === 'contract_negotiation').length;
   const rejectedCount = applications.filter((a: any) => a.status === 'rejected').length;
   const selectedApplication = filtered.find((app: any) => app.id === selectedApplicationId) || filtered[0] || null;
 
@@ -284,7 +283,7 @@ export default function CandidateBewerbungenPage() {
 
                         {/* Pipeline progress mini */}
                         <div className="hidden md:flex items-center gap-0.5 shrink-0">
-                          {PIPELINE_STAGES.slice(0, 8).map((s, i) => (
+                          {PIPELINE_STAGES.slice(0, 7).map((s, i) => (
                             <div
                               key={s.key}
                               className={`h-1.5 w-4 rounded-full transition-colors ${

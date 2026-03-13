@@ -279,12 +279,11 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
 export const APPLICATION_STATUS = [
   'interest_expressed',
   'screening',
-  'shortlisted',
-  'forwarded',
-  'interview_1',
-  'interview_2',
-  'offer',
-  'hired',
+  'recruiter_call',
+  'briefing',
+  'hiring_team',
+  'contract_negotiation',
+  'signed',
   'rejected',
   'withdrawn',
 ] as const;
@@ -292,29 +291,27 @@ export const APPLICATION_STATUS = [
 export type ApplicationStatus = (typeof APPLICATION_STATUS)[number];
 
 export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
-  interest_expressed: 'Interesse bekundet',
-  screening: 'In Prüfung',
-  shortlisted: 'Vorausgewählt',
-  forwarded: 'Weitergeleitet',
-  interview_1: 'Interview 1',
-  interview_2: 'Interview 2',
-  offer: 'Angebot',
-  hired: 'Eingestellt',
+  interest_expressed: 'Bewerbung eingegangen',
+  screening: 'Recruiter Screening',
+  recruiter_call: 'Recruiter Call',
+  briefing: 'Briefing mit Recruiter',
+  hiring_team: 'Hiring Team Kennenlernen',
+  contract_negotiation: 'Vertragsverhandlung',
+  signed: 'Unterschrift & Start',
   rejected: 'Abgelehnt',
   withdrawn: 'Zurückgezogen',
 };
 
 export const CANDIDATE_APPLICATION_STAGE_LABELS: Record<ApplicationStatus, string> = {
-  interest_expressed: 'Applied',
+  interest_expressed: 'Beworben',
   screening: 'Screening',
-  shortlisted: 'Screening',
-  forwarded: 'Intro Sent',
-  interview_1: 'Intro Sent',
-  interview_2: 'Intro Sent',
-  offer: 'Intro Sent',
-  hired: 'Hired',
-  rejected: 'Rejected',
-  withdrawn: 'Rejected',
+  recruiter_call: 'Recruiter Call',
+  briefing: 'Briefing',
+  hiring_team: 'Beim Hiring Team',
+  contract_negotiation: 'Verhandlung',
+  signed: 'Eingestellt',
+  rejected: 'Abgelehnt',
+  withdrawn: 'Zurückgezogen',
 };
 
 export const APPROVAL_STATUS = ['pending', 'approved', 'rejected'] as const;

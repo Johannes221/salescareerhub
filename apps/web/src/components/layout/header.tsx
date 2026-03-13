@@ -54,9 +54,10 @@ export function Header() {
     ? publicNav
     : dbUser.role === 'admin'
       ? [
-        { href: '/dashboard/admin', label: 'Mein Bereich' },
-        { href: '/dashboard/admin/users', label: 'Nutzer' },
+        { href: '/dashboard/admin', label: 'Dashboard' },
+        { href: '/dashboard/admin/applications', label: 'Pipeline' },
         { href: '/dashboard/admin/jobs', label: 'Jobs' },
+        { href: '/dashboard/admin/candidates', label: 'Kandidaten' },
       ]
       : dbUser.role === 'company'
         ? [

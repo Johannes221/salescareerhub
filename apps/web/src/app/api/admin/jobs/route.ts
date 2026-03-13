@@ -186,7 +186,12 @@ export async function PATCH(req: NextRequest) {
     if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
 
     const body = await req.json();
-    const { jobId, approvalStatus, status, isFeatured, isAgencyManaged, sourceType, legalNotes, verificationStatus, companyPermissionStatus } = body;
+    const {
+      jobId, approvalStatus, status, isFeatured, isAgencyManaged, sourceType,
+      legalNotes, verificationStatus, companyPermissionStatus,
+      title, roleCategory, seniority, employmentType, remoteType, location, country,
+      salaryMin, salaryMax, oteMin, oteMax, description, requirements, benefits,
+    } = body;
 
     if (!jobId) return NextResponse.json({ success: false, error: 'Job-ID erforderlich' }, { status: 400 });
 
@@ -199,6 +204,20 @@ export async function PATCH(req: NextRequest) {
     if (legalNotes !== undefined) updateData.legalNotes = legalNotes;
     if (verificationStatus !== undefined) updateData.verificationStatus = verificationStatus;
     if (companyPermissionStatus !== undefined) updateData.companyPermissionStatus = companyPermissionStatus;
+    if (title !== undefined) updateData.title = title;
+    if (roleCategory !== undefined) updateData.roleCategory = roleCategory;
+    if (seniority !== undefined) updateData.seniority = seniority;
+    if (employmentType !== undefined) updateData.employmentType = employmentType;
+    if (remoteType !== undefined) updateData.remoteType = remoteType;
+    if (location !== undefined) updateData.location = location;
+    if (country !== undefined) updateData.country = country;
+    if (salaryMin !== undefined) updateData.salaryMin = salaryMin;
+    if (salaryMax !== undefined) updateData.salaryMax = salaryMax;
+    if (oteMin !== undefined) updateData.oteMin = oteMin;
+    if (oteMax !== undefined) updateData.oteMax = oteMax;
+    if (description !== undefined) { updateData.description = description; updateData.descriptionAnonymized = description; }
+    if (requirements !== undefined) updateData.requirements = requirements;
+    if (benefits !== undefined) updateData.benefits = benefits;
 
     if (approvalStatus === 'approved' && status === undefined) {
       updateData.status = 'live';

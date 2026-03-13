@@ -120,20 +120,21 @@ export function buildCalendarUrl(input: {
 export function getCandidateApplicationStage(status?: string | null) {
   switch (status) {
     case 'screening':
-    case 'shortlisted':
       return 'Screening';
-    case 'forwarded':
-    case 'interview_1':
-    case 'interview_2':
-    case 'offer':
-      return 'Intro Sent';
+    case 'recruiter_call':
+    case 'briefing':
+      return 'Recruiter Call';
+    case 'hiring_team':
+      return 'Beim Hiring Team';
+    case 'contract_negotiation':
+      return 'Verhandlung';
     case 'rejected':
     case 'withdrawn':
-      return 'Rejected';
-    case 'hired':
-      return 'Hired';
+      return 'Abgelehnt';
+    case 'signed':
+      return 'Eingestellt';
     default:
-      return 'Applied';
+      return 'Beworben';
   }
 }
 
@@ -141,11 +142,15 @@ export function getCandidateApplicationStageVariant(status?: string | null): str
   switch (getCandidateApplicationStage(status)) {
     case 'Screening':
       return 'warning';
-    case 'Intro Sent':
+    case 'Recruiter Call':
       return 'secondary';
-    case 'Rejected':
+    case 'Beim Hiring Team':
+      return 'info';
+    case 'Verhandlung':
+      return 'success';
+    case 'Abgelehnt':
       return 'destructive';
-    case 'Hired':
+    case 'Eingestellt':
       return 'success';
     default:
       return 'outline';

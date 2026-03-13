@@ -46,12 +46,11 @@ export interface ApplicationEntry {
 export type ApplicationStatus =
   | 'interest_expressed'
   | 'screening'
-  | 'shortlisted'
-  | 'forwarded'
-  | 'interview_1'
-  | 'interview_2'
-  | 'offer'
-  | 'hired'
+  | 'recruiter_call'
+  | 'briefing'
+  | 'hiring_team'
+  | 'contract_negotiation'
+  | 'signed'
   | 'rejected'
   | 'withdrawn';
 
@@ -62,16 +61,15 @@ export interface StatusHistoryEntry {
 }
 
 export const APPLICATION_PIPELINE_STAGES = [
-  { key: 'interest_expressed', label: 'Bewerbung', shortLabel: 'Beworben' },
-  { key: 'screening', label: 'Screening', shortLabel: 'Screening' },
-  { key: 'shortlisted', label: 'Vorausgewählt', shortLabel: 'Shortlist' },
-  { key: 'forwarded', label: 'Weitergeleitet', shortLabel: 'Intro' },
-  { key: 'interview_1', label: 'Erstgespräch', shortLabel: 'Interview 1' },
-  { key: 'interview_2', label: 'Fachgespräch', shortLabel: 'Interview 2' },
-  { key: 'offer', label: 'Angebot', shortLabel: 'Angebot' },
-  { key: 'hired', label: 'Eingestellt', shortLabel: 'Hired' },
+  { key: 'interest_expressed', label: 'Bewerbung eingegangen', shortLabel: 'Beworben' },
+  { key: 'screening', label: 'Recruiter Screening', shortLabel: 'Screening' },
+  { key: 'recruiter_call', label: 'Recruiter Call', shortLabel: 'Call' },
+  { key: 'briefing', label: 'Briefing mit Recruiter', shortLabel: 'Briefing' },
+  { key: 'hiring_team', label: 'Hiring Team Kennenlernen', shortLabel: 'Hiring Team' },
+  { key: 'contract_negotiation', label: 'Vertragsverhandlung', shortLabel: 'Verhandlung' },
+  { key: 'signed', label: 'Unterschrift & Start', shortLabel: 'Unterschrift' },
   { key: 'rejected', label: 'Absage', shortLabel: 'Absage' },
-  { key: 'withdrawn', label: 'Zurückgezogen', shortLabel: 'Zurückgez.' },
+  { key: 'withdrawn', label: 'Zurückgezogen', shortLabel: 'Zurückg ez.' },
 ] as const;
 
 export interface InsightArticle {
