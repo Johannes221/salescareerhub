@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,21 @@ const COMPANY_TYPE_OPTIONS = [
   { value: 'enterprise', label: 'Enterprise' },
 ];
 const COMPANY_SIZE_OPTIONS = COMPANY_SIZES.map((size) => ({ value: size, label: size }));
+const ROLE_OPTION_VALUES = new Set(ROLE_OPTIONS.map((option) => option.value));
+const COUNTRY_OPTION_VALUES = new Set(COUNTRY_OPTIONS.map((option) => option.value));
+const REMOTE_OPTION_VALUES = new Set(REMOTE_OPTIONS.map((option) => option.value));
+const SENIORITY_OPTION_VALUES = new Set(SENIORITY_OPTIONS.map((option) => option.value));
+const INDUSTRY_OPTION_VALUES = new Set(INDUSTRY_OPTIONS.map((option) => option.value));
+const COMPANY_TYPE_OPTION_VALUES = new Set(COMPANY_TYPE_OPTIONS.map((option) => option.value));
+const COMPANY_TYPE_PREFILL_MAP: Record<string, string[]> = {
+  'Seed Startup': ['startup'],
+  'Series A Startup': ['startup'],
+  'Series B+ Scale-up': ['scaleup'],
+  Mittelstand: ['mittelstand'],
+  Enterprise: ['enterprise'],
+  'VC-backed': ['startup', 'scaleup'],
+  Bootstrapped: ['startup'],
+};
 
 const FILTER_LABEL_MAP: Record<string, Record<string, string>> = {
   roles: Object.fromEntries(JOB_ROLES.map((r) => [r, r])),
@@ -45,20 +60,63 @@ const FILTER_LABEL_MAP: Record<string, Record<string, string>> = {
   locations: {},
 };
 
+const createEmptyFilters = () => ({
+  roles: [] as string[],
+  countries: [] as string[],
+  workModels: [] as string[],
+  seniorityLevels: [] as string[],
+  industries: [] as string[],
+  companyTypes: [] as string[],
+  companySizes: [] as string[],
+});
+
+function uniqueNonEmptyStrings(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+}
+
+function pickAllowedValues(values: Array<string | null | undefined>, allowedValues: Set<string>) {
+  return uniqueNonEmptyStrings(values).filter((value) => allowedValues.has(value));
+}
+
+function mapPreferredCompanyTypes(values: unknown) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return pickAllowedValues(
+    values.flatMap((value) => COMPANY_TYPE_PREFILL_MAP[String(value).trim()] ?? []),
+    COMPANY_TYPE_OPTION_VALUES
+  );
+}
+
+function getProfileFilterDefaults(profile: any) {
+  const desiredJobRoles = Array.isArray(profile?.desiredJobRoles) ? profile.desiredJobRoles : [];
+  const remotePreference = Array.isArray(profile?.remotePreference) ? profile.remotePreference : [];
+  const desiredIndustries = Array.isArray(profile?.desiredIndustries) ? profile.desiredIndustries : [];
+
+  return {
+    roles: pickAllowedValues([...desiredJobRoles, profile?.targetRole], ROLE_OPTION_VALUES),
+    countries: pickAllowedValues([profile?.country], COUNTRY_OPTION_VALUES),
+    workModels: pickAllowedValues(remotePreference, REMOTE_OPTION_VALUES),
+    seniorityLevels: pickAllowedValues([profile?.seniority], SENIORITY_OPTION_VALUES),
+    industries: pickAllowedValues(desiredIndustries, INDUSTRY_OPTION_VALUES),
+    companyTypes: mapPreferredCompanyTypes(profile?.preferredCompanyTypes),
+    companySizes: [] as string[],
+  };
+}
+
 export default function CandidateJobsPage() {
   const { dbUser } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({
-    roles: [] as string[],
-    countries: [] as string[],
-    workModels: [] as string[],
-    seniorityLevels: [] as string[],
-    industries: [] as string[],
-    companyTypes: [] as string[],
-    companySizes: [] as string[],
-  });
+  const [filters, setFilters] = useState(createEmptyFilters);
   const [locationFilter, setLocationFilter] = useState('');
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
@@ -67,6 +125,7 @@ export default function CandidateJobsPage() {
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [mobileFilters, setMobileFilters] = useState(false);
+  const hasAppliedProfileDefaultsRef = useRef(false);
   const pageSize = 12;
 
   const fetchJobs = useCallback(async () => {
@@ -117,6 +176,42 @@ export default function CandidateJobsPage() {
     void loadSaved();
   }, [dbUser]);
 
+  useEffect(() => {
+    if (!dbUser || dbUser.role !== 'candidate' || hasAppliedProfileDefaultsRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    hasAppliedProfileDefaultsRef.current = true;
+
+    const loadProfileDefaults = async () => {
+      try {
+        const token = await getIdToken();
+        const res = await fetch('/api/candidate/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok || cancelled) {
+          return;
+        }
+
+        const payload = await res.json();
+        const profileDefaults = getProfileFilterDefaults(payload.data || {});
+
+        setFilters((current) => {
+          const hasManualSelection = Object.values(current).some((values) => values.length > 0);
+          return hasManualSelection ? current : { ...current, ...profileDefaults };
+        });
+      } catch {}
+    };
+
+    void loadProfileDefaults();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dbUser]);
+
   const toggleSave = async (jobId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -152,15 +247,7 @@ export default function CandidateJobsPage() {
   );
 
   const clearAllFilters = () => {
-    setFilters({
-      roles: [],
-      countries: [],
-      workModels: [],
-      seniorityLevels: [],
-      industries: [],
-      companyTypes: [],
-      companySizes: [],
-    });
+    setFilters(createEmptyFilters());
     setLocationFilter('');
     setSearch('');
     setPage(1);
@@ -227,14 +314,14 @@ export default function CandidateJobsPage() {
         </div>
 
         {/* Desktop filter bar */}
-        <div className="hidden lg:flex flex-wrap items-center gap-2">
+        <div className="hidden lg:flex flex-wrap items-end gap-2">
           <MultiSelectFilter
             label="Rolle"
             options={ROLE_OPTIONS}
             selected={filters.roles}
             onChange={(v) => { setFilters((p) => ({ ...p, roles: v })); setPage(1); }}
             className="w-44"
-            placeholder="Egal"
+            placeholder="Alle Rollen"
           />
           <MultiSelectFilter
             label="Land"
@@ -242,7 +329,7 @@ export default function CandidateJobsPage() {
             selected={filters.countries}
             onChange={(v) => { setFilters((p) => ({ ...p, countries: v })); setPage(1); }}
             className="w-40"
-            placeholder="Egal"
+            placeholder="Alle Länder"
           />
           <MultiSelectFilter
             label="Arbeitsmodell"
@@ -250,7 +337,7 @@ export default function CandidateJobsPage() {
             selected={filters.workModels}
             onChange={(v) => { setFilters((p) => ({ ...p, workModels: v })); setPage(1); }}
             className="w-40"
-            placeholder="Egal"
+            placeholder="Alle Modelle"
           />
           <MultiSelectFilter
             label="Seniorität"
@@ -258,7 +345,7 @@ export default function CandidateJobsPage() {
             selected={filters.seniorityLevels}
             onChange={(v) => { setFilters((p) => ({ ...p, seniorityLevels: v })); setPage(1); }}
             className="w-40"
-            placeholder="Egal"
+            placeholder="Alle Level"
           />
           <MultiSelectFilter
             label="Unternehmen"
@@ -266,7 +353,7 @@ export default function CandidateJobsPage() {
             selected={filters.companyTypes}
             onChange={(v) => { setFilters((p) => ({ ...p, companyTypes: v })); setPage(1); }}
             className="w-44"
-            placeholder="Egal"
+            placeholder="Alle Typen"
           />
           <MultiSelectFilter
             label="Größe"
@@ -274,7 +361,7 @@ export default function CandidateJobsPage() {
             selected={filters.companySizes}
             onChange={(v) => { setFilters((p) => ({ ...p, companySizes: v })); setPage(1); }}
             className="w-40"
-            placeholder="Egal"
+            placeholder="Alle Größen"
           />
           <MultiSelectFilter
             label="Branche"
@@ -282,48 +369,61 @@ export default function CandidateJobsPage() {
             selected={filters.industries}
             onChange={(v) => { setFilters((p) => ({ ...p, industries: v })); setPage(1); }}
             className="w-44"
-            placeholder="Egal"
+            placeholder="Alle Branchen"
           />
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={locationFilter}
-              onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }}
-              placeholder="Ort"
-              className="h-9 w-40 pl-8"
-            />
+          <div className="flex w-40 flex-col gap-1.5">
+            <span className="px-1 text-[11px] font-medium text-muted-foreground">Ort</span>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={locationFilter}
+                onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }}
+                placeholder="Ort oder Region"
+                className="h-9 w-full pl-8"
+              />
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-            <select
-              value={sort}
-              onChange={(e) => { setSort(e.target.value); setPage(1); }}
-              className="h-9 rounded-lg border bg-background px-3 text-sm"
-            >
-              <option value="newest">Neueste zuerst</option>
-              <option value="salary_high">Höchstes Gehalt</option>
-              <option value="salary_low">Niedrigstes Gehalt</option>
-            </select>
+          <div className="ml-auto flex w-48 flex-col gap-1.5">
+            <span className="px-1 text-[11px] font-medium text-muted-foreground">Sortierung</span>
+            <div className="relative">
+              <ArrowUpDown className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <select
+                value={sort}
+                onChange={(e) => { setSort(e.target.value); setPage(1); }}
+                className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm"
+              >
+                <option value="newest">Neueste zuerst</option>
+                <option value="salary_high">Höchstes Gehalt</option>
+                <option value="salary_low">Niedrigstes Gehalt</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* Mobile filter sheet */}
         {mobileFilters && (
           <div className="lg:hidden space-y-3 p-4 rounded-xl border bg-background">
-            <MultiSelectFilter label="Rolle" options={ROLE_OPTIONS} selected={filters.roles} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, roles: v })); setPage(1); }} />
-            <MultiSelectFilter label="Land" options={COUNTRY_OPTIONS} selected={filters.countries} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, countries: v })); setPage(1); }} />
-            <MultiSelectFilter label="Arbeitsmodell" options={REMOTE_OPTIONS} selected={filters.workModels} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, workModels: v })); setPage(1); }} />
-            <MultiSelectFilter label="Seniorität" options={SENIORITY_OPTIONS} selected={filters.seniorityLevels} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, seniorityLevels: v })); setPage(1); }} />
-            <MultiSelectFilter label="Unternehmen" options={COMPANY_TYPE_OPTIONS} selected={filters.companyTypes} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, companyTypes: v })); setPage(1); }} />
-            <MultiSelectFilter label="Größe" options={COMPANY_SIZE_OPTIONS} selected={filters.companySizes} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, companySizes: v })); setPage(1); }} />
-            <MultiSelectFilter label="Branche" options={INDUSTRY_OPTIONS} selected={filters.industries} placeholder="Egal" onChange={(v) => { setFilters((p) => ({ ...p, industries: v })); setPage(1); }} />
-            <Input value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} placeholder="Ort" />
-            <div className="flex items-center gap-2">
-              <select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} className="h-9 flex-1 rounded-lg border bg-background px-3 text-sm">
-                <option value="newest">Neueste zuerst</option>
-                <option value="salary_high">Höchstes Gehalt</option>
-                <option value="salary_low">Niedrigstes Gehalt</option>
-              </select>
+            <MultiSelectFilter label="Rolle" options={ROLE_OPTIONS} selected={filters.roles} placeholder="Alle Rollen" onChange={(v) => { setFilters((p) => ({ ...p, roles: v })); setPage(1); }} />
+            <MultiSelectFilter label="Land" options={COUNTRY_OPTIONS} selected={filters.countries} placeholder="Alle Länder" onChange={(v) => { setFilters((p) => ({ ...p, countries: v })); setPage(1); }} />
+            <MultiSelectFilter label="Arbeitsmodell" options={REMOTE_OPTIONS} selected={filters.workModels} placeholder="Alle Modelle" onChange={(v) => { setFilters((p) => ({ ...p, workModels: v })); setPage(1); }} />
+            <MultiSelectFilter label="Seniorität" options={SENIORITY_OPTIONS} selected={filters.seniorityLevels} placeholder="Alle Level" onChange={(v) => { setFilters((p) => ({ ...p, seniorityLevels: v })); setPage(1); }} />
+            <MultiSelectFilter label="Unternehmen" options={COMPANY_TYPE_OPTIONS} selected={filters.companyTypes} placeholder="Alle Typen" onChange={(v) => { setFilters((p) => ({ ...p, companyTypes: v })); setPage(1); }} />
+            <MultiSelectFilter label="Größe" options={COMPANY_SIZE_OPTIONS} selected={filters.companySizes} placeholder="Alle Größen" onChange={(v) => { setFilters((p) => ({ ...p, companySizes: v })); setPage(1); }} />
+            <MultiSelectFilter label="Branche" options={INDUSTRY_OPTIONS} selected={filters.industries} placeholder="Alle Branchen" onChange={(v) => { setFilters((p) => ({ ...p, industries: v })); setPage(1); }} />
+            <div className="space-y-1.5">
+              <span className="px-1 text-[11px] font-medium text-muted-foreground">Ort</span>
+              <Input value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }} placeholder="Ort oder Region" />
+            </div>
+            <div className="space-y-1.5">
+              <span className="px-1 text-[11px] font-medium text-muted-foreground">Sortierung</span>
+              <div className="relative">
+                <ArrowUpDown className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} className="h-9 w-full rounded-lg border bg-background pl-9 pr-3 text-sm">
+                  <option value="newest">Neueste zuerst</option>
+                  <option value="salary_high">Höchstes Gehalt</option>
+                  <option value="salary_low">Niedrigstes Gehalt</option>
+                </select>
+              </div>
             </div>
           </div>
         )}

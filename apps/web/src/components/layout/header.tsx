@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { APP_CONFIG } from '@/lib/config';
+import { CandidateNav } from '@/components/layout/candidate-nav';
 import { Bell, LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
 
 const publicNav = [
@@ -45,6 +46,10 @@ export function Header() {
     return `/dashboard/${dbUser.role === 'admin' ? 'admin' : dbUser.role === 'company' ? 'company' : 'candidate'}/benachrichtigungen`;
   };
 
+  if (dbUser?.role === 'candidate') {
+    return <CandidateNav />;
+  }
+
   const navItems = !dbUser
     ? publicNav
     : dbUser.role === 'admin'
@@ -59,12 +64,7 @@ export function Header() {
           { href: '/dashboard/company/jobs', label: 'Jobs' },
           { href: '/dashboard/company/profil', label: 'Profil' },
         ]
-        : [
-          { href: '/dashboard/candidate', label: 'Mein Bereich' },
-          { href: '/jobs', label: 'Jobs' },
-          { href: '/dashboard/candidate/bewerbungen', label: 'Bewerbungen' },
-          { href: '/dashboard/candidate/profil', label: 'Profil' },
-        ];
+        : [];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

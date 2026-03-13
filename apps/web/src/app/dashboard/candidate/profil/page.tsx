@@ -2,10 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { CandidateProfileTabs } from '@/components/candidate-profile-tabs';
+import { ProfileAvatarUploader } from '@/components/profile-avatar-uploader';
 import { getIdToken } from '@/lib/auth/client';
+import { useAuth } from '@/lib/auth-context';
 import { BadgeCheck, CircleAlert, Sparkles } from 'lucide-react';
 
 export default function CandidateProfilePage() {
+  const { dbUser, refreshUser } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,6 +47,7 @@ export default function CandidateProfilePage() {
     (completionFields.filter((f) => f.filled).length / completionFields.length) * 100
   );
   const missingCount = completionFields.filter((field) => !field.filled).length;
+  const displayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || dbUser?.displayName || 'Profilbild';
 
   if (loading) {
     return (
@@ -89,6 +93,22 @@ export default function CandidateProfilePage() {
             </div>
           </div>
           <div className="rounded-[24px] border border-border/70 bg-background/90 p-5">
+            <div className="mb-5 rounded-2xl border border-border/70 bg-muted/20 p-4">
+              <p className="text-sm font-semibold">Profilbild</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Optional, aber hilfreich für eine persönlichere Profilansicht.
+              </p>
+              <div className="mt-4">
+                <ProfileAvatarUploader
+                  imageUrl={dbUser?.avatarUrl}
+                  name={displayName}
+                  compact
+                  onChange={() => {
+                    void refreshUser();
+                  }}
+                />
+              </div>
+            </div>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">Profil-Fortschritt</p>

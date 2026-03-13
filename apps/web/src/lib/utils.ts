@@ -18,6 +18,58 @@ export function formatSalaryRange(min?: number, max?: number, currency = 'EUR'):
   return `bis ${formatCurrency(max!, currency)}`;
 }
 
+export function getCandidateSalaryGuidance(yearsOfExperience?: number | null) {
+  const years = Number.isFinite(Number(yearsOfExperience)) ? Number(yearsOfExperience) : 0;
+
+  if (years <= 0) {
+    return {
+      label: 'Einstieg / Quereinstieg',
+      baseMin: 35000,
+      baseMax: 50000,
+      oteMin: 45000,
+      oteMax: 65000,
+    };
+  }
+
+  if (years <= 2) {
+    return {
+      label: 'Junior / erste direkte Erfahrung',
+      baseMin: 45000,
+      baseMax: 65000,
+      oteMin: 60000,
+      oteMax: 85000,
+    };
+  }
+
+  if (years <= 5) {
+    return {
+      label: 'Mid-Level',
+      baseMin: 60000,
+      baseMax: 85000,
+      oteMin: 90000,
+      oteMax: 130000,
+    };
+  }
+
+  if (years <= 8) {
+    return {
+      label: 'Senior',
+      baseMin: 80000,
+      baseMax: 110000,
+      oteMin: 120000,
+      oteMax: 180000,
+    };
+  }
+
+  return {
+    label: 'Leadership / Strategic',
+    baseMin: 100000,
+    baseMax: 150000,
+    oteMin: 160000,
+    oteMax: 260000,
+  };
+}
+
 export function formatDate(date: Date | string, locale = 'de-DE'): string {
   return new Date(date).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
@@ -284,7 +336,7 @@ export const candidateProfileSchema = z.object({
   currentRole: z.string().trim().min(1, 'Aktuelle Rolle ist erforderlich'),
   targetRole: z.string().trim().optional().or(z.literal('')),
   desiredJobRoles: stringArraySchema().min(1, 'Bitte wähle mindestens eine Zielrolle aus'),
-  desiredIndustries: stringArraySchema().min(1, 'Bitte wähle mindestens eine Branche aus'),
+  desiredIndustries: stringArraySchema().default([]),
   careerGoals: stringArraySchema().min(1, 'Bitte wähle mindestens ein Karriereziel aus'),
   preferredCompanyTypes: stringArraySchema().default([]),
   seniority: z.string().optional(),
@@ -296,7 +348,7 @@ export const candidateProfileSchema = z.object({
   noticePeriod: z.string().trim().optional(),
   salesCycleLength: z.string().trim().optional().or(z.literal('')),
   shortBio: z.string().max(1000).optional().or(z.literal('')),
-  skills: stringArraySchema().min(5, 'Bitte wähle mindestens 5 Skills aus'),
+  skills: stringArraySchema().default([]),
   dealSizePreference: stringArraySchema().default([]),
   salesMotionExperience: stringArraySchema().default([]),
   workExperiences: z.array(workExperienceSchema).default([]),
@@ -309,7 +361,7 @@ export const candidateProfileSchema = z.object({
   onboardingStep: optionalNumber(),
   onboardingSource: z.enum(['manual', 'cv']).optional(),
   visibleToRecruiters: z.boolean().default(false),
-  openToWork: z.boolean().default(true),
+  openToWork: z.boolean().default(false),
 }).refine((data) => Number(data.salaryExpectationOte) >= Number(data.salaryExpectationBase), {
   message: 'OTE muss mindestens so hoch wie das Grundgehalt sein',
   path: ['salaryExpectationOte'],
@@ -365,6 +417,49 @@ export const jobSchema = z.object({
   currency: z.string().default('EUR'),
   description: z.string().min(1, 'Beschreibung ist erforderlich'),
   requirements: z.string().optional(),
+  requirementsStructured: z.object({
+    required: z.object({
+      yearsOfExperience: z.number().int().min(0).max(25).nullable().optional(),
+      industries: z.array(z.string()).default([]),
+      previousRoles: z.array(z.string()).default([]),
+      skills: z.array(z.string()).default([]),
+      salesMotions: z.array(z.string()).default([]),
+    }).default({
+      yearsOfExperience: null,
+      industries: [],
+      previousRoles: [],
+      skills: [],
+      salesMotions: [],
+    }),
+    optional: z.object({
+      yearsOfExperience: z.number().int().min(0).max(25).nullable().optional(),
+      industries: z.array(z.string()).default([]),
+      previousRoles: z.array(z.string()).default([]),
+      skills: z.array(z.string()).default([]),
+      salesMotions: z.array(z.string()).default([]),
+    }).default({
+      yearsOfExperience: null,
+      industries: [],
+      previousRoles: [],
+      skills: [],
+      salesMotions: [],
+    }),
+  }).default({
+    required: {
+      yearsOfExperience: null,
+      industries: [],
+      previousRoles: [],
+      skills: [],
+      salesMotions: [],
+    },
+    optional: {
+      yearsOfExperience: null,
+      industries: [],
+      previousRoles: [],
+      skills: [],
+      salesMotions: [],
+    },
+  }),
   benefits: z.string().optional(),
   sourceType: z.string().default('direct_company_posting'),
   sourceUrl: z.string().url().optional().or(z.literal('')),

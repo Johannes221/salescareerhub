@@ -164,6 +164,7 @@ model Job {
   descriptionOriginal     String?
   descriptionAnonymized   String?
   requirements            String?
+  requirementsStructured  Json?
   benefits                String?
   sourceType              String    @default("direct_company_posting")
   sourceUrl               String?

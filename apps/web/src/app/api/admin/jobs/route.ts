@@ -1,6 +1,12 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
+import {
+  buildStructuredRequirementsText,
+  buildStructuredRequirementTags,
+  normalizeStructuredJobRequirements,
+} from '@/lib/job-requirements';
 import { slugify } from '@/lib/utils';
 import { anonymizeJob, JobAnonymizerError } from '@/services/jobAnonymizer';
 
@@ -38,7 +44,7 @@ export async function POST(req: NextRequest) {
       currency,
       description,
       jobDescription,
-      requirements,
+      requirementsStructured,
       benefits,
       sourceUrl,
       tags,
@@ -62,6 +68,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Pflichtfelder fehlen' }, { status: 400 });
     }
 
+    const normalizedRequirements = normalizeStructuredJobRequirements(requirementsStructured);
+    const requirementsSummary = buildStructuredRequirementsText(normalizedRequirements);
+    const mergedTags = Array.from(new Set([
+      resolvedRoleCategory,
+      ...(Array.isArray(tags) ? tags : []),
+      ...buildStructuredRequirementTags(normalizedRequirements),
+    ].filter(Boolean)));
+
     const anonymizedJob = await anonymizeJob({
       title: resolvedTitle,
       companyName: company.name,
@@ -76,7 +90,7 @@ export async function POST(req: NextRequest) {
         ? `${oteMin ?? ''}-${oteMax ?? ''} ${currency || 'EUR'}`
         : null,
       jobDescription: resolvedDescription,
-      requirements,
+      requirements: requirementsSummary || undefined,
       benefits,
     });
 
@@ -105,13 +119,14 @@ export async function POST(req: NextRequest) {
         descriptionOriginal: anonymizedJob.descriptionOriginal,
         descriptionAnonymized: anonymizedJob.descriptionAnonymized,
         requirements: anonymizedJob.requirementsAnonymized,
+        requirementsStructured: normalizedRequirements as Prisma.InputJsonValue,
         benefits: anonymizedJob.benefitsAnonymized,
         sourceType: 'agency_managed_job',
         sourceUrl,
         applyViaPlattform: true,
         status: 'pending_review',
         approvalStatus: 'pending',
-        tags: tags || [],
+        tags: mergedTags,
       },
     });
 

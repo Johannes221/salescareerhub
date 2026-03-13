@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { computeCandidateJobMatch } from '@/lib/candidate-journey';
 import { prisma } from '@/lib/db';
 import { verifyIdToken } from '@/lib/auth/server';
 import { mapJobToPublic, publicJobSelect } from '@/lib/public-jobs';
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
     // Check if logged-in user has expressed interest or saved this job
     let interestStatus: string | null = null;
     let saved = false;
+    let candidateProfile: any = null;
 
     const authHeader = req.headers.get('authorization');
     if (authHeader?.startsWith('Bearer ')) {
@@ -33,6 +35,8 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
           where: { firebaseUid: decoded.uid },
           include: { candidateProfile: true },
         });
+
+        candidateProfile = user?.role === 'candidate' ? user.candidateProfile : null;
 
         if (user?.candidateProfile) {
           const application = await prisma.application.findFirst({
@@ -50,7 +54,22 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       } catch {}
     }
 
-    return NextResponse.json({ success: true, data: mapJobToPublic(job), interestStatus, saved });
+    const publicJob = mapJobToPublic(job);
+    const match = candidateProfile ? computeCandidateJobMatch(candidateProfile, publicJob) : null;
+
+    return NextResponse.json({
+      success: true,
+      data: match
+        ? {
+          ...publicJob,
+          matchScore: match.score,
+          matchReasons: match.reasons,
+          requirementGroups: match.requirementGroups,
+        }
+        : publicJob,
+      interestStatus,
+      saved,
+    });
   } catch (error) {
     console.error('Job detail error:', error);
     return NextResponse.json({ success: false, error: 'Fehler beim Laden' }, { status: 500 });

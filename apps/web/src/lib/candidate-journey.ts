@@ -1,3 +1,9 @@
+import {
+  computeStructuredRequirementFit,
+  normalizeStructuredJobRequirements,
+  type RequirementFitGroup,
+} from '@/lib/job-requirements';
+
 type NullableDate = Date | string | null | undefined;
 
 type CandidateProfileLike = {
@@ -41,6 +47,7 @@ type JobLike = {
   quota?: string | null;
   description?: string | null;
   requirements?: string | null;
+  requirementsStructured?: unknown;
   benefits?: string | null;
   tags?: string[] | null;
 };
@@ -280,11 +287,13 @@ function buildResources(status: string, hasCandidateMessage: boolean): JourneyRe
 
 export function computeCandidateJobMatch(profile: CandidateProfileLike | null | undefined, job: JobLike | null | undefined) {
   if (!profile || !job) {
-    return { score: 0, reasons: [] as string[] };
+    return { score: 0, reasons: [] as string[], requirementGroups: [] as ReturnType<typeof computeStructuredRequirementFit> };
   }
 
   let score = 18;
   const reasons: string[] = [];
+  const requirementGroups = computeStructuredRequirementFit(profile, job.requirementsStructured);
+  const structuredRequirements = normalizeStructuredJobRequirements(job.requirementsStructured);
 
   const roleTokens = toTokenSet([
     profile.currentRole,
@@ -358,15 +367,60 @@ export function computeCandidateJobMatch(profile: CandidateProfileLike | null | 
   }
 
   const skillTokens = toTokenSet([...(profile.skills || [])]);
-  const jobSkillTokens = toTokenSet([...(job.tags || []), job.requirements, job.description]);
+  const jobSkillTokens = toTokenSet([
+    ...(job.tags || []),
+    ...structuredRequirements.required.skills,
+    ...structuredRequirements.optional.skills,
+    ...structuredRequirements.required.previousRoles,
+    ...structuredRequirements.optional.previousRoles,
+    ...structuredRequirements.required.industries,
+    ...structuredRequirements.optional.industries,
+    ...structuredRequirements.required.salesMotions,
+    ...structuredRequirements.optional.salesMotions,
+    job.requirements,
+    job.description,
+  ]);
   if (hasOverlap(skillTokens, jobSkillTokens)) {
     score += 10;
     reasons.push('Mehrere Skills oder Themen überschneiden sich mit den Anforderungen.');
   }
 
+  if (requirementGroups.length > 0) {
+    requirementGroups.forEach((group) => {
+      if (group.category === 'required') {
+        if (group.status === 'matched') {
+          score += 9;
+        } else if (group.status === 'partial') {
+          score += 4;
+        } else {
+          score -= 4;
+        }
+        return;
+      }
+
+      if (group.status === 'matched') {
+        score += 4;
+      } else if (group.status === 'partial') {
+        score += 2;
+      }
+    });
+
+    const requiredGroups = requirementGroups.filter((group: RequirementFitGroup) => group.category === 'required');
+    const matchedRequiredGroups = requiredGroups.filter((group: RequirementFitGroup) => group.status !== 'missing');
+
+    if (requiredGroups.length > 0) {
+      if (matchedRequiredGroups.length === requiredGroups.length) {
+        reasons.unshift('Du deckst alle zentralen Pflichtbereiche der Rolle ab.');
+      } else {
+        reasons.unshift(`${matchedRequiredGroups.length} von ${requiredGroups.length} Pflichtbereichen sind bereits abgedeckt.`);
+      }
+    }
+  }
+
   return {
     score: Math.max(12, Math.min(98, Math.round(score))),
     reasons: reasons.slice(0, 4),
+    requirementGroups,
   };
 }
 

@@ -154,6 +154,7 @@ export async function GET(req: NextRequest) {
         country: user.candidateProfile.country,
         yearsOfExperience: user.candidateProfile.yearsOfExperience,
         seniority: user.candidateProfile.seniority,
+        salaryExpectationOte: user.candidateProfile.salaryExpectationOte,
         cvFileName: user.candidateProfile.cvFileName,
         averageDealSize: user.candidateProfile.averageDealSize,
         largestDealClosed: user.candidateProfile.largestDealClosed,

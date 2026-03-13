@@ -19,10 +19,9 @@ import {
   SALES_SKILL_SUGGESTIONS,
   SENIORITY_LABELS,
 } from '@/lib/config';
-import { cn, deriveSeniorityFromYears, formatCurrency } from '@/lib/utils';
+import { cn, deriveSeniorityFromYears, formatCurrency, formatSalaryRange, getCandidateSalaryGuidance } from '@/lib/utils';
 import {
   BriefcaseBusiness,
-  Eye,
   FileText,
   Globe,
   Languages,
@@ -31,8 +30,6 @@ import {
   MapPin,
   PencilLine,
   Phone,
-  Shield,
-  ShieldCheck,
   Target,
   TrendingUp,
   Upload,
@@ -42,7 +39,7 @@ import {
 } from 'lucide-react';
 
 type ProfileRecord = Record<string, unknown>;
-type TabKey = 'personal' | 'career' | 'sales' | 'documents' | 'preferences' | 'privacy';
+type TabKey = 'personal' | 'career' | 'sales' | 'documents' | 'preferences';
 type ArrayField =
   | 'remotePreference'
   | 'desiredJobRoles'
@@ -86,7 +83,6 @@ type EditableProfile = {
   salaryExpectationCurrency: string;
   noticePeriod: string;
   salesCycleLength: string;
-  shortBio: string;
   skills: string[];
   dealSizePreference: string[];
   salesMotionExperience: string[];
@@ -99,8 +95,6 @@ type EditableProfile = {
   googlePlaceData?: Record<string, unknown>;
   onboardingStep: number;
   onboardingSource: 'manual' | 'cv';
-  visibleToRecruiters: boolean;
-  openToWork: boolean;
   averageDealSize: string;
   largestDealClosed: string;
   averageSalesCycle: string;
@@ -111,10 +105,9 @@ type EditableProfile = {
 const TABS: Array<{ key: TabKey; label: string; description: string; icon: React.ElementType }> = [
   { key: 'personal', label: 'Persönliche Daten', description: 'Kontakt, Name und Standort', icon: User },
   { key: 'career', label: 'Karriereziele', description: 'Rolle, OTE und Zielprofil', icon: Target },
-  { key: 'sales', label: 'Saleserfahrung', description: 'Track Record und Kennzahlen', icon: TrendingUp },
+  { key: 'sales', label: 'Erfahrung & Sales-Fokus', description: 'Hintergrund, Umfeld und optionale Kennzahlen', icon: TrendingUp },
   { key: 'documents', label: 'Dokumente', description: 'CV und Unterlagen', icon: FileText },
   { key: 'preferences', label: 'Präferenzen', description: 'Skills, Sprachen, Wunschumfeld', icon: Globe },
-  { key: 'privacy', label: 'Datenschutz', description: 'Sichtbarkeit und Freigaben', icon: Shield },
 ];
 
 const LOCATION_PREFERENCE_OPTIONS = [
@@ -125,10 +118,10 @@ const LOCATION_PREFERENCE_OPTIONS = [
   'Überall in der EU',
 ] as const;
 
-const DEAL_SIZE_OPTIONS = ['< 10k €', '10k - 50k €', '50k - 100k €', '100k - 500k €', '500k+ €'] as const;
-const SALES_CYCLE_OPTIONS = ['< 1 Monat', '1-3 Monate', '3-6 Monate', '6-12 Monate', '12+ Monate'] as const;
+const ENTRY_LEVEL_OPTION = 'Noch keine direkte Sales-Erfahrung';
+const DEAL_SIZE_OPTIONS = [ENTRY_LEVEL_OPTION, '< 10k €', '10k - 50k €', '50k - 100k €', '100k - 500k €', '500k+ €'] as const;
+const SALES_CYCLE_OPTIONS = [ENTRY_LEVEL_OPTION, '< 1 Monat', '1-3 Monate', '3-6 Monate', '6-12 Monate', '12+ Monate'] as const;
 const SELECT_CLASSES = 'flex h-11 w-full rounded-xl border border-input bg-background px-3.5 py-2 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-ring/20';
-const TEXTAREA_CLASSES = 'min-h-[120px] w-full rounded-xl border border-input bg-background px-3.5 py-3 text-sm shadow-sm transition placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20';
 
 function toStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -190,7 +183,6 @@ function normalizeProfile(profile: ProfileRecord): EditableProfile {
     salaryExpectationCurrency: String(profile.salaryExpectationCurrency || 'EUR'),
     noticePeriod: String(profile.noticePeriod || ''),
     salesCycleLength: String(profile.salesCycleLength || ''),
-    shortBio: String(profile.shortBio || ''),
     skills: toStringArray(profile.skills),
     dealSizePreference: toStringArray(profile.dealSizePreference),
     salesMotionExperience: toStringArray(profile.salesMotionExperience),
@@ -205,8 +197,6 @@ function normalizeProfile(profile: ProfileRecord): EditableProfile {
       : undefined,
     onboardingStep: Number(profile.onboardingStep ?? 5),
     onboardingSource: profile.onboardingSource === 'cv' ? 'cv' : 'manual',
-    visibleToRecruiters: Boolean(profile.visibleToRecruiters ?? true),
-    openToWork: Boolean(profile.openToWork ?? true),
     averageDealSize: profile.averageDealSize ? String(profile.averageDealSize) : '',
     largestDealClosed: profile.largestDealClosed ? String(profile.largestDealClosed) : '',
     averageSalesCycle: profile.averageSalesCycle ? String(profile.averageSalesCycle) : '',
@@ -236,6 +226,7 @@ export function CandidateProfileTabs({
   const [draft, setDraft] = useState<EditableProfile>(normalizedProfile);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const salaryGuidance = useMemo(() => getCandidateSalaryGuidance(draft.yearsOfExperience), [draft.yearsOfExperience]);
 
   const beginEdit = (tab: TabKey) => {
     setDraft(normalizeProfile(profile));
@@ -460,7 +451,7 @@ export function CandidateProfileTabs({
       {activeTab === 'career' && (
         <SectionShell
           title="Karriereziele"
-          description="Definiere Zielrolle, Arbeitsmodell und Vergütung."
+          description="Definiere Zielrolle, Arbeitsmodell und eine realistische Gehaltsspanne für deinen nächsten Schritt."
           editing={editingTab === 'career'}
           saving={saving}
           error={error}
@@ -472,21 +463,65 @@ export function CandidateProfileTabs({
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Aktuelle Rolle" icon={BriefcaseBusiness}>
-                  <Input value={draft.currentRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('currentRole', e.target.value)} placeholder="z. B. Account Executive" className="h-11 rounded-xl" />
+                  <Input value={draft.currentRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('currentRole', e.target.value)} placeholder="z. B. Berufseinstieg, SDR, Account Executive" className="h-11 rounded-xl" />
                 </FormField>
                 <FormField label="Zielrolle" icon={Target}>
-                  <Input value={draft.targetRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('targetRole', e.target.value)} placeholder="z. B. Senior AE" className="h-11 rounded-xl" />
-                </FormField>
-                <FormField label="Grundgehalt" icon={Wallet}>
-                  <Input type="number" value={draft.salaryExpectationBase} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salaryExpectationBase', Number(e.target.value || 0))} placeholder="60000" className="h-11 rounded-xl" />
-                </FormField>
-                <FormField label="OTE Ziel" icon={Wallet}>
-                  <Input type="number" value={draft.salaryExpectationOte} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salaryExpectationOte', Number(e.target.value || 0))} placeholder="100000" className="h-11 rounded-xl" />
+                  <Input value={draft.targetRole} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('targetRole', e.target.value)} placeholder="z. B. Junior SDR, AE oder RevOps" className="h-11 rounded-xl" />
                 </FormField>
                 <FormField label="Kündigungsfrist" icon={Target} className="md:col-span-2">
                   <Input value={draft.noticePeriod} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('noticePeriod', e.target.value)} placeholder="z. B. 3 Monate" className="h-11 rounded-xl" />
                 </FormField>
               </div>
+              <Subsection title="Gehaltsorientierung" description={`Auf Basis von ${draft.yearsOfExperience || 0} Jahren Erfahrung ergibt sich als grobe Orientierung aktuell ${salaryGuidance.label}.`}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-border/70 bg-background px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Grundgehalt</p>
+                    <p className="mt-1 text-sm font-semibold">{formatSalaryRange(salaryGuidance.baseMin, salaryGuidance.baseMax)}</p>
+                  </div>
+                  <div className="rounded-2xl border border-border/70 bg-background px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">OTE</p>
+                    <p className="mt-1 text-sm font-semibold">{formatSalaryRange(salaryGuidance.oteMin, salaryGuidance.oteMax)}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-5">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                      <span>Grundgehalt</span>
+                      <span className="text-primary">{formatCurrency(draft.salaryExpectationBase || 0)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={25000}
+                      max={250000}
+                      step={5000}
+                      value={draft.salaryExpectationBase}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        const nextBase = Number(e.target.value || 0);
+                        setField('salaryExpectationBase', nextBase);
+                        if (draft.salaryExpectationOte < nextBase) {
+                          setField('salaryExpectationOte', nextBase);
+                        }
+                      }}
+                      className="w-full accent-primary"
+                    />
+                  </div>
+                  <div>
+                    <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                      <span>OTE Ziel</span>
+                      <span className="text-primary">{formatCurrency(Math.max(draft.salaryExpectationOte || 0, draft.salaryExpectationBase || 0))}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={30000}
+                      max={400000}
+                      step={5000}
+                      value={Math.max(draft.salaryExpectationOte || 0, draft.salaryExpectationBase || 0)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('salaryExpectationOte', Number(e.target.value || 0))}
+                      className="w-full accent-primary"
+                    />
+                  </div>
+                </div>
+              </Subsection>
               <Subsection title="Zielrollen" description="Füge Rollen hinzu, die für dich besonders relevant sind.">
                 <AddableTagField values={draft.desiredJobRoles} suggestions={JOB_ROLES as unknown as readonly string[]} onAdd={(value) => addTag('desiredJobRoles', value)} onRemove={(value) => removeTag('desiredJobRoles', value)} placeholder="Zielrolle hinzufügen" />
               </Subsection>
@@ -517,8 +552,8 @@ export function CandidateProfileTabs({
 
       {activeTab === 'sales' && (
         <SectionShell
-          title="Saleserfahrung"
-          description="Zeige Track Record, Deal-Größen und dein Sales-Umfeld."
+          title="Erfahrung & Sales-Fokus"
+          description="Zeige deinen bisherigen Hintergrund über aktuelle und frühere Stationen. Tiefe Kennzahlen bleiben optional."
           editing={editingTab === 'sales'}
           saving={saving}
           error={error}
@@ -528,6 +563,9 @@ export function CandidateProfileTabs({
         >
           {editingTab === 'sales' ? (
             <div className="space-y-5">
+              <div className="rounded-2xl border bg-primary/[0.04] p-4 text-sm text-muted-foreground">
+                Hier geht es nicht nur um deinen aktuellen Job, sondern um dein bisheriges Gesamtbild: Branchen, Motion, betreute Accounts, Dealgrößen und Sales Cycles.
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Jahre Erfahrung" icon={TrendingUp}>
                   <Input type="number" value={draft.yearsOfExperience} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('yearsOfExperience', Number(e.target.value || 0))} placeholder="3" className="h-11 rounded-xl" />
@@ -535,7 +573,7 @@ export function CandidateProfileTabs({
                 <FormField label="Abgeleitete Seniorität" icon={TrendingUp}>
                   <Input value={deriveSeniorityFromYears(draft.yearsOfExperience) || draft.seniority} disabled className="h-11 rounded-xl bg-muted/40" />
                 </FormField>
-                <FormField label="Sales Cycle" icon={TrendingUp}>
+                <FormField label="Bisheriger Sales Cycle (optional)" icon={TrendingUp}>
                   <select value={draft.salesCycleLength} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setField('salesCycleLength', e.target.value)} className={SELECT_CLASSES}>
                     <option value="">Bitte auswählen</option>
                     {SALES_CYCLE_OPTIONS.map((option) => (
@@ -543,30 +581,27 @@ export function CandidateProfileTabs({
                     ))}
                   </select>
                 </FormField>
-                <FormField label="Territory" icon={MapPin}>
-                  <Input value={draft.territorySize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('territorySize', e.target.value)} placeholder="z. B. DACH, Enterprise Nord" className="h-11 rounded-xl" />
+                <FormField label="Accounts / Territory (optional)" icon={MapPin}>
+                  <Input value={draft.territorySize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('territorySize', e.target.value)} placeholder="z. B. DACH Mid-Market, Named Accounts" className="h-11 rounded-xl" />
                 </FormField>
-                <FormField label="Ø Deal Size" icon={Wallet}>
+                <FormField label="Ø Deal Size (optional)" icon={Wallet}>
                   <Input type="number" value={draft.averageDealSize} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageDealSize', e.target.value)} placeholder="25000" className="h-11 rounded-xl" />
                 </FormField>
-                <FormField label="Größter Deal" icon={Wallet}>
+                <FormField label="Größter Deal (optional)" icon={Wallet}>
                   <Input type="number" value={draft.largestDealClosed} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('largestDealClosed', e.target.value)} placeholder="120000" className="h-11 rounded-xl" />
                 </FormField>
-                <FormField label="Ø Sales Cycle in Tagen" icon={TrendingUp} className="md:col-span-2">
+                <FormField label="Ø Sales Cycle in Tagen (optional)" icon={TrendingUp} className="md:col-span-2">
                   <Input type="number" value={draft.averageSalesCycle} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setField('averageSalesCycle', e.target.value)} placeholder="60" className="h-11 rounded-xl" />
                 </FormField>
               </div>
-              <Subsection title="Deal Size Präferenzen" description="Welche Bandbreiten passen am besten zu deinem Background?">
+              <Subsection title="Deal Size / betreute Bandbreiten" description="Optional: Welche Dealgrößen hast du bisher vor allem betreut?">
                 <ChoiceGroup options={DEAL_SIZE_OPTIONS} values={draft.dealSizePreference} onToggle={(value) => toggleArrayValue('dealSizePreference', value)} />
               </Subsection>
-              <Subsection title="Sales Motion" description="Markiere die Bewegungen, in denen du dich sicher fühlst.">
+              <Subsection title="Sales Motion" description="Optional: Welche Motion war in deinem bisherigen Umfeld prägend?">
                 <ChoiceGroup options={SALES_MOTION_OPTIONS as unknown as readonly string[]} values={draft.salesMotionExperience} onToggle={(value) => toggleArrayValue('salesMotionExperience', value)} />
               </Subsection>
-              <Subsection title="Industrie-Erfahrung" description="Diese Bereiche helfen beim Matching besonders stark.">
+              <Subsection title="Branchen-Erfahrung" description="Welche Branchen hast du bisher betreut oder inhaltlich kennengelernt?">
                 <ChoiceGroup options={SALES_INDUSTRY_OPTIONS as unknown as readonly string[]} values={draft.industriesExperience} onToggle={(value) => toggleArrayValue('industriesExperience', value)} />
-              </Subsection>
-              <Subsection title="Kurzprofil" description="2-3 Sätze zu deinem Fokus, Track Record und Zielbild.">
-                <textarea value={draft.shortBio} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setField('shortBio', e.target.value)} rows={4} className={TEXTAREA_CLASSES} placeholder="Beschreibe kurz dein Profil, deine Stärken und dein ideales Umfeld." />
               </Subsection>
             </div>
           ) : (
@@ -682,44 +717,6 @@ export function CandidateProfileTabs({
         </SectionShell>
       )}
 
-      {activeTab === 'privacy' && (
-        <SectionShell
-          title="Datenschutz & Sichtbarkeit"
-          description="Steuere, wie sichtbar dein Profil für Recruiter ist."
-          editing={editingTab === 'privacy'}
-          saving={saving}
-          error={error}
-          onEdit={() => beginEdit('privacy')}
-          onCancel={() => setEditingTab(null)}
-          onSave={() => saveTab('privacy')}
-        >
-          {editingTab === 'privacy' ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <ToggleCard
-                label="Open to Work"
-                description="Signalisiere aktiv, dass du offen für neue Rollen bist."
-                checked={draft.openToWork}
-                onChange={(checked) => setField('openToWork', checked)}
-                icon={ShieldCheck}
-              />
-              <ToggleCard
-                label="Sichtbar für Recruiter"
-                description="Erlaube Recruitern, dein Profil für passende Matches zu sehen."
-                checked={draft.visibleToRecruiters}
-                onChange={(checked) => setField('visibleToRecruiters', checked)}
-                icon={Eye}
-              />
-            </div>
-          ) : (
-            <SummaryGrid
-              items={[
-                { label: 'Open to Work', value: normalizedProfile.openToWork ? 'Aktiv' : 'Nicht aktiv', icon: ShieldCheck },
-                { label: 'Recruiter-Sichtbarkeit', value: normalizedProfile.visibleToRecruiters ? 'Aktiv' : 'Nicht aktiv', icon: Eye },
-              ]}
-            />
-          )}
-        </SectionShell>
-      )}
     </div>
   );
 }
@@ -964,37 +961,3 @@ function AddableTagField({
   );
 }
 
-function ToggleCard({
-  label,
-  description,
-  checked,
-  onChange,
-  icon: Icon,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  icon?: React.ElementType;
-}) {
-  return (
-    <label className={cn(
-      'flex items-start justify-between gap-4 rounded-2xl border p-4 transition',
-      checked ? 'border-primary/30 bg-primary/[0.05]' : 'border-border/70 bg-muted/[0.12]',
-    )}>
-      <div className="flex gap-3">
-        <div className={cn(
-          'mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl border',
-          checked ? 'border-primary/20 bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground',
-        )}>
-          {Icon ? <Icon className="h-4 w-4" /> : null}
-        </div>
-        <div>
-          <p className="text-sm font-semibold">{label}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <input type="checkbox" checked={checked} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)} className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
-    </label>
-  );
-}

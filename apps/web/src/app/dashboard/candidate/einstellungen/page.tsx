@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { ProfileAvatarUploader } from '@/components/profile-avatar-uploader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { getIdToken } from '@/lib/auth/client';
 import { Settings, Download, Trash2, AlertCircle, CheckCircle, Shield } from 'lucide-react';
 
 export default function CandidateSettingsPage() {
-  const { dbUser, logout } = useAuth();
+  const { dbUser, logout, refreshUser } = useAuth();
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -67,6 +68,19 @@ export default function CandidateSettingsPage() {
           <CardTitle className="text-lg flex items-center gap-2"><Settings className="h-5 w-5" /> Kontoinformationen</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="rounded-xl border p-4">
+            <p className="text-sm font-medium">Profilbild</p>
+            <p className="mt-1 text-xs text-muted-foreground">Optional für dein Kandidatenprofil und deinen Dashboard-Bereich.</p>
+            <div className="mt-4">
+              <ProfileAvatarUploader
+                imageUrl={dbUser?.avatarUrl}
+                name={dbUser?.displayName || dbUser?.email || 'Profilbild'}
+                onChange={() => {
+                  void refreshUser();
+                }}
+              />
+            </div>
+          </div>
           <div className="flex justify-between items-center">
             <div><p className="text-sm font-medium">E-Mail</p><p className="text-sm text-muted-foreground">{dbUser?.email}</p></div>
           </div>

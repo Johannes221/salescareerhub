@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   Briefcase, Users, Building2, Star, BarChart3, FileText, Settings, Shield,
   TrendingUp, MessageSquare, BookOpen, Mail, Activity, Cog, Plus,
-  Heart, Bell, User, Eye, Menu, X,
+  Menu, X,
 } from 'lucide-react';
 
 interface NavItem {
@@ -17,16 +17,6 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
 }
-
-const candidateNav: NavItem[] = [
-  { href: '/dashboard/candidate', label: 'Übersicht', icon: BarChart3 },
-  { href: '/dashboard/candidate/profil', label: 'Mein Profil', icon: User },
-  { href: '/dashboard/candidate/bewerbungen', label: 'Bewerbungen', icon: FileText },
-  { href: '/dashboard/candidate/gespeichert', label: 'Gespeicherte Jobs', icon: Heart },
-  { href: '/dashboard/candidate/dokumente', label: 'Dokumente', icon: FileText },
-  { href: '/dashboard/candidate/benachrichtigungen', label: 'Benachrichtigungen', icon: Bell },
-  { href: '/dashboard/candidate/einstellungen', label: 'Einstellungen', icon: Settings },
-];
 
 const companyNav: NavItem[] = [
   { href: '/dashboard/company', label: 'Übersicht', icon: BarChart3 },
@@ -58,12 +48,10 @@ export function DashboardSidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const nav = dbUser?.role === 'admin' ? adminNav
-    : dbUser?.role === 'company' ? companyNav
-    : candidateNav;
+  const nav = dbUser?.role === 'admin' ? adminNav : companyNav;
 
-  const roleLabel = dbUser?.role === 'admin' ? 'Admin' : dbUser?.role === 'company' ? 'Unternehmen' : 'Kandidat';
-  const RoleIcon = dbUser?.role === 'admin' ? Shield : dbUser?.role === 'company' ? Building2 : User;
+  const roleLabel = dbUser?.role === 'admin' ? 'Admin' : 'Unternehmen';
+  const RoleIcon = dbUser?.role === 'admin' ? Shield : Building2;
 
   const isActive = (href: string) => {
     if (href === `/dashboard/${dbUser?.role}` || href === '/dashboard/admin') {

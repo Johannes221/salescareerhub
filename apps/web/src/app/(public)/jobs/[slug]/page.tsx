@@ -7,12 +7,19 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { computeCandidateJobMatch } from '@/lib/candidate-journey';
 import {
   REMOTE_TYPE_LABELS,
   SENIORITY_LABELS,
   EMPLOYMENT_TYPE_LABELS,
   APPLICATION_STATUS_LABELS,
 } from '@/lib/config';
+import {
+  hasStructuredJobRequirements,
+  normalizeStructuredJobRequirements,
+  type JobRequirementBucket,
+  type RequirementFitGroup,
+} from '@/lib/job-requirements';
 import { formatSalaryRange, formatRelativeDate, getPublicCompanyLabel } from '@/lib/utils';
 import { getIdToken } from '@/lib/auth/client';
 import { validateFile } from '@/lib/gdpr';
@@ -98,23 +105,6 @@ function splitIntoBullets(value?: string | null) {
   );
 }
 
-function buildRequirementBuckets(requirements?: string | null) {
-  const required: string[] = [];
-  const niceToHave: string[] = [];
-  const niceToHavePattern = /(nice[\s-]?to[\s-]?have|wünschenswert|bonus|plus|optional|von vorteil|preferred|idealerweise)/i;
-
-  splitIntoBullets(requirements).forEach((item) => {
-    if (niceToHavePattern.test(item)) {
-      niceToHave.push(item);
-      return;
-    }
-
-    required.push(item);
-  });
-
-  return { required, niceToHave };
-}
-
 function formatSingleValue(value?: number | null, currency = 'EUR') {
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return 'Nicht hinterlegt';
@@ -160,6 +150,65 @@ function ReadonlyField({ label, value }: { label: string; value: React.ReactNode
       <div className="mt-2 text-sm font-medium text-foreground">{value}</div>
     </div>
   );
+}
+
+function RequirementStatusBadge({ status }: { status: RequirementFitGroup['status'] }) {
+  const label = status === 'matched' ? 'Erfüllt' : status === 'partial' ? 'Teilweise' : 'Offen';
+  const className = status === 'matched'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+    : status === 'partial'
+      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      : 'border-border/70 bg-muted/40 text-muted-foreground';
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+function RequirementFitCard({ group }: { group: RequirementFitGroup }) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{group.label}</p>
+          <p className="mt-2 text-sm font-semibold">{group.targetValue}</p>
+        </div>
+        <RequirementStatusBadge status={group.status} />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">Dein Profil: {group.candidateValue}</p>
+    </div>
+  );
+}
+
+function formatRequirementBucket(bucket: JobRequirementBucket) {
+  const items: Array<{ label: string; value: string }> = [];
+
+  if (bucket.yearsOfExperience != null) {
+    items.push({
+      label: 'Sales-Erfahrung',
+      value: `${bucket.yearsOfExperience} ${bucket.yearsOfExperience === 1 ? 'Jahr' : 'Jahre'}`,
+    });
+  }
+
+  if (bucket.previousRoles.length > 0) {
+    items.push({ label: 'Bisherige Rollen', value: bucket.previousRoles.join(' · ') });
+  }
+
+  if (bucket.industries.length > 0) {
+    items.push({ label: 'Branchen / Nischen', value: bucket.industries.join(' · ') });
+  }
+
+  if (bucket.skills.length > 0) {
+    items.push({ label: 'Skills', value: bucket.skills.join(' · ') });
+  }
+
+  if (bucket.salesMotions.length > 0) {
+    items.push({ label: 'Sales Motion', value: bucket.salesMotions.join(' · ') });
+  }
+
+  return items;
 }
 
 function BulletSection({
@@ -263,8 +312,31 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
 
   const descriptionBullets = useMemo(() => splitIntoBullets(job?.description), [job?.description]);
   const benefitsBullets = useMemo(() => splitIntoBullets(job?.benefits), [job?.benefits]);
-  const requirementBuckets = useMemo(() => buildRequirementBuckets(job?.requirements), [job?.requirements]);
   const profile = dbUser?.candidateProfile;
+  const structuredRequirements = useMemo(
+    () => normalizeStructuredJobRequirements(job?.requirementsStructured),
+    [job?.requirementsStructured],
+  );
+  const hasRequirementsStructured = useMemo(
+    () => hasStructuredJobRequirements(job?.requirementsStructured),
+    [job?.requirementsStructured],
+  );
+  const legacyRequirementBuckets = useMemo(() => {
+    const required: string[] = [];
+    const niceToHave: string[] = [];
+    const niceToHavePattern = /(nice[\s-]?to[\s-]?have|wünschenswert|bonus|plus|optional|von vorteil|preferred|idealerweise)/i;
+
+    splitIntoBullets(job?.requirements).forEach((item) => {
+      if (niceToHavePattern.test(item)) {
+        niceToHave.push(item);
+        return;
+      }
+
+      required.push(item);
+    });
+
+    return { required, niceToHave };
+  }, [job?.requirements]);
   const industriesExperience = useMemo(
     () => normalizeStringArray(profile?.industriesExperience),
     [profile?.industriesExperience],
@@ -312,6 +384,32 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
 
   const isCandidate = dbUser?.role === 'candidate';
   const canSubmitApplication = isCandidate && profileIssues.length === 0;
+  const jobMatch = useMemo(
+    () => computeCandidateJobMatch(profile, job),
+    [profile, job],
+  );
+  const matchScore = isCandidate ? jobMatch.score : job?.matchScore;
+  const matchReasons = isCandidate ? jobMatch.reasons : job?.matchReasons || [];
+  const requiredFitGroups = useMemo(
+    () => jobMatch.requirementGroups.filter((group: RequirementFitGroup) => group.category === 'required'),
+    [jobMatch.requirementGroups],
+  );
+  const optionalFitGroups = useMemo(
+    () => jobMatch.requirementGroups.filter((group: RequirementFitGroup) => group.category === 'optional'),
+    [jobMatch.requirementGroups],
+  );
+  const requiredRequirementItems = useMemo(
+    () => formatRequirementBucket(structuredRequirements.required),
+    [structuredRequirements.required],
+  );
+  const optionalRequirementItems = useMemo(
+    () => formatRequirementBucket(structuredRequirements.optional),
+    [structuredRequirements.optional],
+  );
+  const matchedRequiredCount = useMemo(
+    () => requiredFitGroups.filter((group: RequirementFitGroup) => group.status !== 'missing').length,
+    [requiredFitGroups],
+  );
 
   const handleApplyClick = () => {
     if (!dbUser) {
@@ -588,18 +686,55 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
               emptyLabel="Für diese Rolle liegt aktuell keine ausführliche Beschreibung vor."
             />
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <BulletSection
-                title="Erforderlich"
-                items={requirementBuckets.required}
-                emptyLabel="Für diese Stelle wurden noch keine Pflichtanforderungen hinterlegt."
-              />
-              <BulletSection
-                title="Nice to have"
-                items={requirementBuckets.niceToHave}
-                emptyLabel="Es wurden keine zusätzlichen Nice-to-have-Kriterien hinterlegt."
-              />
-            </div>
+            {hasRequirementsStructured ? (
+              <div className="grid gap-6 xl:grid-cols-2">
+                <Card className="rounded-3xl border-border/70 shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-xl">Pflichtkriterien</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {requiredRequirementItems.length > 0 ? (
+                      <div className="grid gap-3">
+                        {requiredRequirementItems.map((item: { label: string; value: string }) => (
+                          <ReadonlyField key={`${item.label}-${item.value}`} label={item.label} value={item.value} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Für diese Stelle wurden noch keine Pflichtanforderungen hinterlegt.</p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className="rounded-3xl border-border/70 shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-xl">Nice to have</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {optionalRequirementItems.length > 0 ? (
+                      <div className="grid gap-3">
+                        {optionalRequirementItems.map((item: { label: string; value: string }) => (
+                          <ReadonlyField key={`${item.label}-${item.value}`} label={item.label} value={item.value} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Es wurden keine zusätzlichen Nice-to-have-Kriterien hinterlegt.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <div className="grid gap-6 xl:grid-cols-2">
+                <BulletSection
+                  title="Erforderlich"
+                  items={legacyRequirementBuckets.required}
+                  emptyLabel="Für diese Stelle wurden noch keine Pflichtanforderungen hinterlegt."
+                />
+                <BulletSection
+                  title="Nice to have"
+                  items={legacyRequirementBuckets.niceToHave}
+                  emptyLabel="Es wurden keine zusätzlichen Nice-to-have-Kriterien hinterlegt."
+                />
+              </div>
+            )}
 
             <BulletSection
               title="Benefits"
@@ -611,14 +746,26 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
           <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
             <Card className="rounded-[28px] border-border/70 shadow-sm">
               <CardContent className="p-6">
-                {typeof job.matchScore === 'number' && isCandidate ? (
+                {typeof matchScore === 'number' && isCandidate ? (
                   <div className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Profil-Match</p>
-                    <p className="mt-2 text-4xl font-bold text-emerald-700">{job.matchScore}%</p>
-                    {job.matchReasons?.length > 0 ? (
+                    <p className="mt-2 text-4xl font-bold text-emerald-700">{matchScore}%</p>
+                    {requiredFitGroups.length > 0 ? (
+                      <p className="mt-2 text-sm text-emerald-900/80">
+                        {matchedRequiredCount} von {requiredFitGroups.length} Pflichtbereichen deckst du bereits ab.
+                      </p>
+                    ) : null}
+                    {matchReasons?.length > 0 ? (
                       <div className="mt-3 space-y-2">
-                        {job.matchReasons.slice(0, 3).map((reason: string) => (
+                        {matchReasons.slice(0, 3).map((reason: string) => (
                           <p key={reason} className="text-sm leading-5 text-emerald-900/80">{reason}</p>
+                        ))}
+                      </div>
+                    ) : null}
+                    {requiredFitGroups.length > 0 ? (
+                      <div className="mt-4 grid gap-3">
+                        {requiredFitGroups.slice(0, 3).map((group: RequirementFitGroup) => (
+                          <RequirementFitCard key={`${group.category}-${group.key}`} group={group} />
                         ))}
                       </div>
                     ) : null}
@@ -651,7 +798,7 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                       </div>
                       <h2 className="mt-4 text-2xl font-semibold">Bewirb dich auf diese Stelle</h2>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Dein Profil wird automatisch übernommen. Du ergänzt nur Nachricht und optionale Dokumente.
+                        Kurzer Match-Check, dann wird dein Profil übernommen. Du ergänzt nur Nachricht und optionale Dokumente.
                       </p>
                     </div>
 
@@ -670,11 +817,11 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                         </div>
 
                         <Button className="h-12 w-full rounded-2xl" onClick={handleApplyClick}>
-                          Bewerbung senden
+                          Bewerbung starten
                           <Send className="ml-2 h-4 w-4" />
                         </Button>
 
-                        <Link href="/dashboard/onboarding?mode=edit">
+                        <Link href="/dashboard/candidate/profil">
                           <Button variant="outline" className="w-full rounded-2xl">Profil ansehen / bearbeiten</Button>
                         </Link>
                       </>
@@ -706,7 +853,7 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
 
       {showApplyModal ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-8 backdrop-blur-sm">
-          <div className="w-full max-w-6xl rounded-[32px] border border-border/70 bg-background shadow-2xl">
+          <div className="w-full max-w-5xl rounded-[32px] border border-border/70 bg-background shadow-2xl">
             <div className="flex items-center justify-between border-b border-border/60 px-6 py-5 sm:px-8">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Bewerbung</p>
@@ -718,13 +865,13 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
               </Button>
             </div>
 
-            <div className="grid gap-6 p-6 sm:p-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+            <div className="grid gap-6 p-6 sm:p-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div className="space-y-6">
                 <Card className="rounded-3xl border-border/70 shadow-sm">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">Dein Profil für diese Bewerbung</CardTitle>
+                    <CardTitle className="text-xl">Profil wird übernommen</CardTitle>
                     <p className="text-sm leading-6 text-muted-foreground">
-                      Diese Daten werden automatisch verwendet. Änderungen machst du direkt in deinem Profil.
+                      Dein bestehendes Profil und dein zuletzt hochgeladener CV werden automatisch für diese Bewerbung genutzt.
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -741,23 +888,10 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                       </div>
                     ) : null}
 
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       <ReadonlyField
                         label="Name"
                         value={`${profileSnapshot.firstName || '—'} ${profileSnapshot.lastName || ''}`.trim() || 'Nicht hinterlegt'}
-                      />
-                      <ReadonlyField
-                        label="LinkedIn"
-                        value={profileSnapshot.linkedinUrl ? (
-                          <a
-                            href={profileSnapshot.linkedinUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="break-all text-primary hover:underline"
-                          >
-                            {profileSnapshot.linkedinUrl}
-                          </a>
-                        ) : 'Nicht hinterlegt'}
                       />
                       <ReadonlyField label="Aktuelle Rolle" value={profileSnapshot.currentRole || 'Nicht hinterlegt'} />
                       <ReadonlyField
@@ -766,38 +900,6 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                       />
                       <ReadonlyField label="Standort" value={profileSnapshot.location || 'Nicht hinterlegt'} />
                       <ReadonlyField label="Territory" value={profileSnapshot.territoryType || 'Nicht hinterlegt'} />
-                      <ReadonlyField
-                        label="Average Deal Size"
-                        value={profileSnapshot.averageDealSize ? formatSingleValue(Number(profileSnapshot.averageDealSize), job.currency) : 'Nicht hinterlegt'}
-                      />
-                      <ReadonlyField
-                        label="Average Sales Cycle"
-                        value={profileSnapshot.averageSalesCycle ? `${profileSnapshot.averageSalesCycle} Tage` : 'Nicht hinterlegt'}
-                      />
-                      <ReadonlyField label="Quota" value={formatQuotaSummary(profileSnapshot.quotaHistory)} />
-                      <ReadonlyField
-                        label="Largest Deal Closed"
-                        value={profileSnapshot.largestDealClosed ? formatSingleValue(Number(profileSnapshot.largestDealClosed), job.currency) : 'Nicht hinterlegt'}
-                      />
-                    </div>
-
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Branchen-Erfahrung</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {profileSnapshot.industriesExperience.length > 0 ? profileSnapshot.industriesExperience.map((entry) => (
-                            <Badge key={entry} variant="secondary">{entry}</Badge>
-                          )) : <span className="text-sm text-muted-foreground">Nicht hinterlegt</span>}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Sales Motion</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {profileSnapshot.salesMotionExperience.length > 0 ? profileSnapshot.salesMotionExperience.map((entry) => (
-                            <Badge key={entry} variant="secondary">{entry}</Badge>
-                          )) : <span className="text-sm text-muted-foreground">Nicht hinterlegt</span>}
-                        </div>
-                      </div>
                     </div>
 
                     <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
@@ -822,7 +924,23 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                       </div>
                     </div>
 
-                    <Link href="/dashboard/onboarding?mode=edit">
+                    <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">LinkedIn</p>
+                      <div className="mt-2 text-sm font-medium">
+                        {profileSnapshot.linkedinUrl ? (
+                          <a
+                            href={profileSnapshot.linkedinUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="break-all text-primary hover:underline"
+                          >
+                            {profileSnapshot.linkedinUrl}
+                          </a>
+                        ) : 'Nicht hinterlegt'}
+                      </div>
+                    </div>
+
+                    <Link href="/dashboard/candidate/profil">
                       <Button variant="outline" className="rounded-2xl">Profil bearbeiten</Button>
                     </Link>
                   </CardContent>
@@ -832,7 +950,7 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                   <CardHeader className="pb-4">
                     <CardTitle className="text-xl">Nachricht & Dokumente</CardTitle>
                     <p className="text-sm leading-6 text-muted-foreground">
-                      Ergänze optional Hinweise für das Recruiting-Team und füge weitere Unterlagen an.
+                      Ergänze optional eine kurze Nachricht und zusätzliche Unterlagen.
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-5">
@@ -849,12 +967,12 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                         value={candidateMessage}
                         onChange={(event) => setCandidateMessage(event.target.value)}
                         placeholder="Warum passt die Rolle gut zu dir? Gibt es Kontext, den wir im Erstgespräch kennen sollten?"
-                        rows={5}
+                        rows={4}
                         className="w-full rounded-2xl border bg-background px-4 py-3 text-sm leading-6 focus:outline-none focus:ring-2 focus:ring-primary"
                       />
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div className="rounded-2xl border border-dashed border-border/80 p-4">
                         <label className="text-sm font-medium">CV aktualisieren</label>
                         <input
@@ -917,63 +1035,108 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
               <div className="space-y-6">
                 <Card className="rounded-3xl border-border/70 shadow-sm">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">Abgleich mit der Rolle</CardTitle>
+                    <CardTitle className="text-xl">Dein Abgleich mit der Rolle</CardTitle>
                     <p className="text-sm leading-6 text-muted-foreground">
-                      Die wichtigsten Anforderungen der Stelle im direkten Überblick zu deinem bestehenden Profil.
+                      Prüfe vor dem Senden in wenigen Sekunden, welche Kernkriterien du bereits abdeckst.
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Dein Profil auf einen Blick</p>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <ReadonlyField label="Rolle" value={profileSnapshot.currentRole || 'Nicht hinterlegt'} />
-                        <ReadonlyField label="Erfahrung" value={profileSnapshot.yearsOfSalesExperience ? `${profileSnapshot.yearsOfSalesExperience} Jahre` : 'Nicht hinterlegt'} />
-                        <ReadonlyField label="Deal Size" value={profileSnapshot.averageDealSize ? formatSingleValue(Number(profileSnapshot.averageDealSize), job.currency) : 'Nicht hinterlegt'} />
-                        <ReadonlyField label="Cycle" value={profileSnapshot.averageSalesCycle ? `${profileSnapshot.averageSalesCycle} Tage` : 'Nicht hinterlegt'} />
-                      </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Erforderlich</p>
-                      {requirementBuckets.required.length > 0 ? (
-                        <ul className="mt-4 space-y-3">
-                          {requirementBuckets.required.map((item) => (
-                            <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
-                              <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
-                              <span>{item}</span>
-                            </li>
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Match-Score</p>
+                      <p className="mt-2 text-4xl font-bold text-emerald-700">{matchScore ?? 0}%</p>
+                      {requiredFitGroups.length > 0 ? (
+                        <p className="mt-2 text-sm text-emerald-900/80">
+                          {matchedRequiredCount} von {requiredFitGroups.length} Pflichtbereichen passen bereits.
+                        </p>
+                      ) : null}
+                      {matchReasons.length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          {matchReasons.slice(0, 3).map((reason: string) => (
+                            <p key={reason} className="text-sm leading-5 text-emerald-900/80">{reason}</p>
                           ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-3 text-sm text-muted-foreground">Keine Pflichtanforderungen hinterlegt.</p>
-                      )}
-                    </div>
-
-                    <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Nice to have</p>
-                      {requirementBuckets.niceToHave.length > 0 ? (
-                        <ul className="mt-4 space-y-3">
-                          {requirementBuckets.niceToHave.map((item) => (
-                            <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
-                              <span className="mt-2 h-2 w-2 rounded-full bg-primary/60" />
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-3 text-sm text-muted-foreground">Keine separaten Nice-to-have-Kriterien hinterlegt.</p>
-                      )}
-                    </div>
-
-                    <div className="rounded-2xl border border-border/60 bg-primary/5 p-4">
-                      <div className="flex items-start gap-3">
-                        <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
-                        <div>
-                          <p className="text-sm font-medium">So wird deine Bewerbung verwendet</p>
-                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                            Dein bestehendes Profil, dein Lebenslauf und optionale Zusatzdokumente werden zusammen mit deiner Nachricht an das Recruiting-Team übermittelt.
-                          </p>
                         </div>
+                      ) : null}
+                    </div>
+
+                    {requiredFitGroups.length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Pflichtkriterien</p>
+                        <div className="grid gap-3">
+                          {requiredFitGroups.map((group: RequirementFitGroup) => (
+                            <RequirementFitCard key={`${group.category}-${group.key}`} group={group} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : hasRequirementsStructured ? (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Pflichtkriterien</p>
+                        {requiredRequirementItems.length > 0 ? (
+                          <div className="grid gap-3">
+                            {requiredRequirementItems.map((item: { label: string; value: string }) => (
+                              <ReadonlyField key={`${item.label}-${item.value}`} label={item.label} value={item.value} />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Keine Pflichtanforderungen hinterlegt.</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Erforderlich</p>
+                        {legacyRequirementBuckets.required.length > 0 ? (
+                          <ul className="space-y-3">
+                            {legacyRequirementBuckets.required.map((item: string) => (
+                              <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
+                                <span className="mt-2 h-2 w-2 rounded-full bg-primary" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Keine Pflichtanforderungen hinterlegt.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {(optionalFitGroups.length > 0 || optionalRequirementItems.length > 0 || legacyRequirementBuckets.niceToHave.length > 0) ? (
+                      <div className="space-y-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Nice to have</p>
+                        {optionalFitGroups.length > 0 ? (
+                          <div className="grid gap-3">
+                            {optionalFitGroups.map((group: RequirementFitGroup) => (
+                              <RequirementFitCard key={`${group.category}-${group.key}`} group={group} />
+                            ))}
+                          </div>
+                        ) : hasRequirementsStructured ? (
+                          <div className="grid gap-3">
+                            {optionalRequirementItems.map((item: { label: string; value: string }) => (
+                              <ReadonlyField key={`${item.label}-${item.value}`} label={item.label} value={item.value} />
+                            ))}
+                          </div>
+                        ) : (
+                          <ul className="space-y-3">
+                            {legacyRequirementBuckets.niceToHave.map((item: string) => (
+                              <li key={item} className="flex items-start gap-3 text-sm leading-6 text-muted-foreground">
+                                <span className="mt-2 h-2 w-2 rounded-full bg-primary/60" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl border-border/70 bg-primary/5 shadow-sm">
+                  <CardContent className="space-y-5 p-6">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium">So wird deine Bewerbung verwendet</p>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          Dein Profil, dein hinterlegter CV und optionale Zusatzdokumente gehen zusammen an das Recruiting-Team.
+                        </p>
                       </div>
                     </div>
 
@@ -991,22 +1154,6 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                         Bitte vervollständige zuerst dein Profil, damit wir deine Bewerbung sauber einreichen können.
                       </p>
                     ) : null}
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-3xl border-border/70 shadow-sm">
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-xl">Rollenfakten</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 sm:grid-cols-2">
-                    <ReadonlyField label="Ort" value={`${job.location || 'Nicht hinterlegt'}${job.country ? `, ${job.country}` : ''}`} />
-                    <ReadonlyField label="Remote" value={job.remoteType ? (REMOTE_TYPE_LABELS[job.remoteType as keyof typeof REMOTE_TYPE_LABELS] || job.remoteType) : 'Nicht hinterlegt'} />
-                    <ReadonlyField label="Beschäftigung" value={job.employmentType ? (EMPLOYMENT_TYPE_LABELS[job.employmentType as keyof typeof EMPLOYMENT_TYPE_LABELS] || job.employmentType) : 'Nicht hinterlegt'} />
-                    <ReadonlyField label="Seniority" value={job.seniority ? (SENIORITY_LABELS[job.seniority as keyof typeof SENIORITY_LABELS] || job.seniority) : 'Nicht hinterlegt'} />
-                    <ReadonlyField label="Base" value={(job.salaryMin || job.salaryMax) ? formatSalaryRange(job.salaryMin, job.salaryMax, job.currency) : 'Nicht hinterlegt'} />
-                    <ReadonlyField label="OTE" value={(job.oteMin || job.oteMax) ? formatSalaryRange(job.oteMin, job.oteMax, job.currency) : 'Nicht hinterlegt'} />
-                    <ReadonlyField label="Deal Size" value={typeof job.averageDealSize === 'number' ? formatSingleValue(job.averageDealSize, job.currency) : 'Nicht hinterlegt'} />
-                    <ReadonlyField label="Sales Cycle" value={typeof job.salesCycleLength === 'number' ? formatNumberValue(job.salesCycleLength, ' Tage') : 'Nicht hinterlegt'} />
                   </CardContent>
                 </Card>
               </div>

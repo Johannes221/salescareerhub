@@ -1,6 +1,12 @@
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { isUser, requireCompanyUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
+import {
+  buildStructuredRequirementsText,
+  buildStructuredRequirementTags,
+  normalizeStructuredJobRequirements,
+} from '@/lib/job-requirements';
 import { slugify } from '@/lib/utils';
 import { anonymizeJob, JobAnonymizerError } from '@/services/jobAnonymizer';
 
@@ -15,7 +21,7 @@ export async function POST(req: NextRequest) {
     const {
       title, roleCategory, seniority, employmentType, location, country,
       remoteType, salaryMin, salaryMax, oteMin, oteMax, currency,
-      description, requirements, benefits, sourceUrl, tags,
+      description, requirementsStructured, benefits, sourceUrl, tags,
     } = body;
 
     if (!title || !roleCategory || !seniority || !description) {
@@ -29,6 +35,14 @@ export async function POST(req: NextRequest) {
     if (!company) {
       return NextResponse.json({ success: false, error: 'Unternehmen nicht gefunden' }, { status: 404 });
     }
+
+    const normalizedRequirements = normalizeStructuredJobRequirements(requirementsStructured);
+    const requirementsSummary = buildStructuredRequirementsText(normalizedRequirements);
+    const mergedTags = Array.from(new Set([
+      roleCategory,
+      ...(Array.isArray(tags) ? tags : []),
+      ...buildStructuredRequirementTags(normalizedRequirements),
+    ].filter(Boolean)));
 
     const anonymizedJob = await anonymizeJob({
       title,
@@ -44,7 +58,7 @@ export async function POST(req: NextRequest) {
         ? `${oteMin ?? ''}-${oteMax ?? ''} ${currency || 'EUR'}`
         : null,
       jobDescription: description,
-      requirements,
+      requirements: requirementsSummary || undefined,
       benefits,
     });
 
@@ -68,13 +82,14 @@ export async function POST(req: NextRequest) {
         descriptionOriginal: anonymizedJob.descriptionOriginal,
         descriptionAnonymized: anonymizedJob.descriptionAnonymized,
         requirements: anonymizedJob.requirementsAnonymized,
+        requirementsStructured: normalizedRequirements as Prisma.InputJsonValue,
         benefits: anonymizedJob.benefitsAnonymized,
         sourceType: 'direct_company_posting',
         sourceUrl,
         applyViaPlattform: true,
         status: 'pending_review',
         approvalStatus: 'pending',
-        tags: tags || [],
+        tags: mergedTags,
       },
     });
 

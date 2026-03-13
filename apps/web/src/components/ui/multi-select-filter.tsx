@@ -50,7 +50,10 @@ export function MultiSelectFilter({
         : `${selected.length} ausgewählt`;
 
   return (
-    <div ref={ref} className={cn('relative', className)}>
+    <div ref={ref} className={cn('relative flex flex-col gap-1.5', className)}>
+      <span className="px-1 text-[11px] font-medium text-muted-foreground">
+        {label}
+      </span>
       <button
         type="button"
         onClick={() => setOpen(!open)}

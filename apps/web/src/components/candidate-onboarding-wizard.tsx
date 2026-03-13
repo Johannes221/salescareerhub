@@ -29,7 +29,7 @@ import {
   CAREER_GOAL_OPTIONS,
   COMPANY_TYPE_OPTIONS,
 } from '@/lib/config';
-import { cn, deriveSeniorityFromYears } from '@/lib/utils';
+import { cn, deriveSeniorityFromYears, formatCurrency, formatSalaryRange, getCandidateSalaryGuidance } from '@/lib/utils';
 import { mapResumeProfileToCandidateSeed } from '@/lib/resume/onboarding-mapping';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -89,6 +89,11 @@ interface WizardData {
   salesCycleLength: string;
   dealSizePreference: string[];
   salesMotionExperience: string[];
+  industriesExperience: string[];
+  territorySize: string;
+  averageDealSize: string;
+  largestDealClosed: string;
+  averageSalesCycle: string;
   // Step 9: Skills & Languages
   skills: string[];
   languageProficiencies: LanguageEntry[];
@@ -99,8 +104,6 @@ interface WizardData {
   salaryExpectationBase: number;
   salaryExpectationOte: number;
   noticePeriod: string;
-  openToWork: boolean;
-  visibleToRecruiters: boolean;
   shortBio: string;
 }
 
@@ -129,6 +132,11 @@ const INITIAL_DATA: WizardData = {
   salesCycleLength: '',
   dealSizePreference: [],
   salesMotionExperience: [],
+  industriesExperience: [],
+  territorySize: '',
+  averageDealSize: '',
+  largestDealClosed: '',
+  averageSalesCycle: '',
   skills: [],
   languageProficiencies: [{ language: 'Deutsch', level: 'Muttersprachliches Niveau' }],
   careerGoals: [],
@@ -136,8 +144,6 @@ const INITIAL_DATA: WizardData = {
   salaryExpectationBase: 60000,
   salaryExpectationOte: 100000,
   noticePeriod: '',
-  openToWork: true,
-  visibleToRecruiters: true,
   shortBio: '',
 };
 
@@ -156,10 +162,21 @@ const STEP_TITLES = [
 ];
 
 const TOTAL_STEPS = STEP_TITLES.length;
+const NO_DIRECT_SALES_EXPERIENCE_LABEL = 'Noch keine direkte Sales-Erfahrung';
+const SALES_MOTION_MIX_OPTIONS = [
+  'Vor allem Inbound',
+  'Ausgewogen zwischen Inbound und Outbound',
+  'Vor allem Outbound',
+] as const;
 
 const SALES_ROLES = [
+  'Berufseinstieg im Software Sales',
+  'Quereinstieg in den Vertrieb',
+  'Junior SDR / BDR',
+  'Sales Trainee',
   'SDR',
   'BDR',
+  'Junior Account Executive',
   'Account Executive',
   'Mid-Market AE',
   'Enterprise AE',
@@ -186,6 +203,7 @@ const LOCATION_PREFERENCES = [
 ] as const;
 
 const SALES_CYCLE_OPTIONS = [
+  NO_DIRECT_SALES_EXPERIENCE_LABEL,
   '< 1 Monat',
   '1-3 Monate',
   '3-6 Monate',
@@ -194,6 +212,7 @@ const SALES_CYCLE_OPTIONS = [
 ] as const;
 
 const DEAL_SIZE_OPTIONS = [
+  NO_DIRECT_SALES_EXPERIENCE_LABEL,
   '< 10k €',
   '10k - 50k €',
   '50k - 100k €',
@@ -202,6 +221,7 @@ const DEAL_SIZE_OPTIONS = [
 ] as const;
 
 const SALES_MOTION_OPTIONS = [
+  NO_DIRECT_SALES_EXPERIENCE_LABEL,
   'Inbound',
   'Outbound',
   'Full Cycle',
@@ -275,6 +295,18 @@ function buildDateValue(month: string, year: string) {
   return month ? `${year}-${month}` : year;
 }
 
+function toStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry).trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value.split(',').map((entry) => entry.trim()).filter(Boolean);
+  }
+
+  return [];
+}
+
 function formatDateLabel(value?: string, isCurrent?: boolean): string {
   if (isCurrent) {
     const start = formatDateLabel(value, false);
@@ -293,6 +325,23 @@ function formatDateLabel(value?: string, isCurrent?: boolean): string {
 
   const monthLabel = MONTH_OPTIONS.find((option) => option.value === month)?.label;
   return monthLabel ? `${monthLabel} ${year}` : normalized;
+}
+
+function getMotionMixValue(values: string[]) {
+  if (values.includes('Vor allem Inbound')) return 20;
+  if (values.includes('Vor allem Outbound')) return 80;
+  return 50;
+}
+
+function getMotionMixLabel(value: number) {
+  if (value <= 33) return 'Vor allem Inbound';
+  if (value >= 67) return 'Vor allem Outbound';
+  return 'Ausgewogen zwischen Inbound und Outbound';
+}
+
+function withMotionMix(values: string[], mixValue: number) {
+  const nextValues = values.filter((entry) => !SALES_MOTION_MIX_OPTIONS.includes(entry as typeof SALES_MOTION_MIX_OPTIONS[number]));
+  return [...nextValues, getMotionMixLabel(mixValue)];
 }
 
 // ─── Sub-Components ─────────────────────────────────────────
@@ -471,6 +520,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
   const [error, setError] = useState('');
   const [editingExperience, setEditingExperience] = useState<string | null>(null);
   const [editingEducation, setEditingEducation] = useState<string | null>(null);
+  const salaryGuidance = useMemo(() => getCandidateSalaryGuidance(data.yearsOfExperience), [data.yearsOfExperience]);
 
   const update = useCallback((patch: Partial<WizardData>) => {
     setData((prev) => ({ ...prev, ...patch }));
@@ -480,6 +530,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
     () => deriveSeniorityFromYears(data.yearsOfExperience),
     [data.yearsOfExperience],
   );
+  const isEntryLevel = data.yearsOfExperience === 0;
 
   // Load existing profile
   useEffect(() => {
@@ -511,6 +562,13 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
             yearsOfExperience: d.yearsOfExperience ?? 0,
             seniority: d.seniority || '',
             desiredIndustries: d.desiredIndustries || [],
+            industriesExperience: toStringArray(d.industriesExperience),
+            territorySize: d.territorySize || '',
+            averageDealSize: d.averageDealSize ? String(d.averageDealSize) : '',
+            largestDealClosed: d.largestDealClosed ? String(d.largestDealClosed) : '',
+            averageSalesCycle: d.averageSalesCycle ? String(d.averageSalesCycle) : '',
+            salesCycleLength: d.salesCycleLength || '',
+            salesMotionExperience: toStringArray(d.salesMotionExperience),
             dealSizePreference: d.dealSizePreference || [],
             skills: d.skills || [],
             languageProficiencies: d.languageProficiencies?.length
@@ -521,8 +579,6 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
             salaryExpectationBase: d.salaryExpectationBase ?? 60000,
             salaryExpectationOte: d.salaryExpectationOte ?? 100000,
             noticePeriod: d.noticePeriod || '',
-            openToWork: d.openToWork ?? true,
-            visibleToRecruiters: d.visibleToRecruiters ?? true,
             shortBio: d.shortBio || '',
             cvUrl: d.cvUrl || '',
             cvFileName: d.cvFileName || '',
@@ -644,6 +700,8 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
         yearsOfExperience: data.yearsOfExperience,
         seniority: derivedSeniority || data.seniority,
         desiredIndustries: data.desiredIndustries,
+        salesCycleLength: data.salesCycleLength,
+        salesMotionExperience: data.salesMotionExperience,
         dealSizePreference: data.dealSizePreference,
         skills: data.skills,
         languages: data.languageProficiencies.map((l) => l.language).filter(Boolean),
@@ -654,8 +712,6 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
         salaryExpectationOte: data.salaryExpectationOte,
         salaryExpectationCurrency: 'EUR',
         noticePeriod: data.noticePeriod,
-        openToWork: data.openToWork,
-        visibleToRecruiters: data.visibleToRecruiters,
         shortBio: data.shortBio,
         workExperiences: data.workExperiences,
         educations: data.educations,
@@ -676,6 +732,24 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
 
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.error || 'Fehler beim Speichern');
+
+      const metricsResponse = await fetch('/api/candidate/profile/metrics', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          averageDealSize: data.averageDealSize,
+          largestDealClosed: data.largestDealClosed,
+          averageSalesCycle: data.averageSalesCycle,
+          salesMotionExperience: data.salesMotionExperience.join(', '),
+          industriesExperience: data.industriesExperience,
+          territorySize: data.territorySize,
+        }),
+      });
+      const metricsPayload = await metricsResponse.json().catch(() => null);
+      if (!metricsResponse.ok) throw new Error(metricsPayload?.error || 'Fehler beim Speichern');
 
       await refreshUser();
       router.push('/dashboard/candidate');
@@ -891,8 +965,13 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
               <label className="mb-1.5 block text-sm font-medium">Standort *</label>
               <GooglePlacesAutocomplete
                 value={data.location}
-                onChange={(v) => update({ location: v })}
-                onPlaceSelect={(place) =>
+                onChange={(value: string) => update({ location: value })}
+                onPlaceSelect={(place: {
+                  placeId: string;
+                  description: string;
+                  mainText: string;
+                  secondaryText: string;
+                }) =>
                   update({ googlePlaceId: place.placeId, location: place.mainText })
                 }
                 placeholder="z.B. Heidelberg, Berlin, München..."
@@ -967,15 +1046,15 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       {step === 4 && (
         <StepCard
           title="Welche Rollen interessieren dich?"
-          description="Wähle alle Sales-Rollen aus, die für dich in Frage kommen."
+          description="Wähle die Rollen, die zu dir passen – vom Quereinstieg bis zur erfahrenen Sales-Rolle."
         >
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Aktuelle Rolle</label>
+            <label className="mb-1.5 block text-sm font-medium">Aktuelle Rolle oder letzter Schwerpunkt *</label>
             <input
               value={data.currentRole}
               onChange={(e) => update({ currentRole: e.target.value })}
               list="current-role-list"
-              placeholder="z.B. Account Executive"
+              placeholder="z.B. Studium, Customer Success, Einzelhandel oder SDR"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <datalist id="current-role-list">
@@ -984,6 +1063,9 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium">Zielrollen *</label>
+            <p className="mb-2 text-sm text-muted-foreground">
+              Auch wenn du neu im Software Sales bist, kannst du hier passende Einstiegsrollen auswählen.
+            </p>
             <div className="flex flex-wrap gap-2">
               {SALES_ROLES.map((role) => (
                 <button
@@ -1009,10 +1091,10 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       {step === 5 && (
         <StepCard
           title="Dein Erfahrungslevel"
-          description="Wie lange bist du schon im Sales tätig?"
+          description="Auch null direkte Sales-Erfahrung ist okay – wir berücksichtigen bewusst Einsteiger und Quereinsteiger."
         >
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Jahre Berufserfahrung im Sales</label>
+            <label className="mb-1.5 block text-sm font-medium">Jahre direkte Berufserfahrung im Sales</label>
             <input
               type="number"
               min={0}
@@ -1021,6 +1103,9 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
               onChange={(e) => update({ yearsOfExperience: parseInt(e.target.value) || 0 })}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
+            <p className="mt-2 text-sm text-muted-foreground">
+              0 steht für Einstieg oder Quereinstieg ohne direkte Sales-Erfahrung.
+            </p>
           </div>
           {derivedSeniority && (
             <div className="rounded-xl border bg-primary/5 p-4">
@@ -1046,7 +1131,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       {step === 6 && (
         <StepCard
           title="Deine Erfahrung und Ausbildung"
-          description="Überprüfe und ergänze deine Berufsstationen."
+          description="Überprüfe und ergänze deine Stationen. Auch Studium, Praktika oder kundennahe Rollen sind hilfreich."
         >
           {/* Work Experiences */}
           <div>
@@ -1122,7 +1207,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
               ))}
               {data.workExperiences.length === 0 && (
                 <p className="py-4 text-center text-sm text-muted-foreground">
-                  Noch keine Berufserfahrung hinzugefügt.
+                  Noch keine Station hinzugefügt. Das ist okay – du kannst auch Praktika, Werkstudentenjobs oder andere relevante Erfahrungen ergänzen.
                 </p>
               )}
             </div>
@@ -1430,11 +1515,13 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       {/* Step 7: Sales Specific */}
       {step === 7 && (
         <StepCard
-          title="Deine Sales-Expertise"
-          description="Optional: Hilf uns, bessere Matches für dich zu finden."
+          title="Dein bisheriger Sales-Kontext"
+          description={isEntryLevel
+            ? 'Wenn du noch am Einstieg stehst, reichen Zielbranchen und Interessen völlig aus. Alles andere kannst du später ergänzen.'
+            : 'Beschreibe hier nicht nur deine aktuelle Rolle, sondern auch das, was du in früheren Stationen hauptsächlich betreut hast.'}
         >
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Branchen</label>
+            <label className="mb-1.5 block text-sm font-medium">In welchen Branchen möchtest du künftig arbeiten?</label>
             <div className="flex flex-wrap gap-2">
               {INDUSTRY_OPTIONS.map((ind) => (
                 <button
@@ -1454,68 +1541,176 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
             </div>
           </div>
 
+          <div className="rounded-2xl border border-primary/10 bg-primary/[0.04] p-4">
+            <p className="text-sm font-medium text-foreground">Was war bisher dein Ding?</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Uns helfen vor allem Muster aus deinem bisherigen Umfeld: Branchen, Motion, typische Dealgrößen, betreute Accounts oder Regionen.
+            </p>
+          </div>
+
           <div>
-            <label className="mb-1.5 block text-sm font-medium">Sales Cycle</label>
+            <label className="mb-1.5 block text-sm font-medium">In welchen Branchen hast du bereits gearbeitet?</label>
+            <p className="mb-2 text-sm text-muted-foreground">
+              Wähle gern auch frühere Branchen aus, nicht nur dein aktuelles Umfeld.
+            </p>
             <div className="flex flex-wrap gap-2">
-              {SALES_CYCLE_OPTIONS.map((opt) => (
+              {INDUSTRY_OPTIONS.map((ind) => (
                 <button
-                  key={opt}
+                  key={`exp-${ind}`}
                   type="button"
-                  onClick={() => update({ salesCycleLength: data.salesCycleLength === opt ? '' : opt })}
+                  onClick={() => toggleArray('industriesExperience', ind)}
                   className={cn(
                     'rounded-full border px-3 py-1.5 text-sm transition',
-                    data.salesCycleLength === opt
+                    data.industriesExperience.includes(ind)
                       ? 'border-primary bg-primary text-white'
                       : 'border-gray-200 bg-white hover:border-gray-300',
                   )}
                 >
-                  {opt}
+                  {ind}
                 </button>
               ))}
             </div>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">Annual Contract Value (ACV)</label>
-            <div className="flex flex-wrap gap-2">
-              {DEAL_SIZE_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => toggleArray('dealSizePreference', opt)}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-sm transition',
-                    data.dealSizePreference.includes(opt)
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-gray-200 bg-white hover:border-gray-300',
-                  )}
-                >
-                  {opt}
-                </button>
-              ))}
+          {isEntryLevel ? (
+            <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground">
+              Wenn du noch keine direkte Sales-Erfahrung hast, sind Angaben zu Sales Cycles, Dealgrößen, Motion oder Accounts komplett optional. Für den Einstieg reichen Zielrollen, Branchen und deine allgemeinen Stärken.
             </div>
-          </div>
+          ) : (
+            <>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Welche Sales Cycles hast du bisher betreut?</label>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Denk an aktuelle und frühere Rollen, nicht nur an dein letztes Setup.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SALES_CYCLE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => update({ salesCycleLength: data.salesCycleLength === opt ? '' : opt })}
+                      className={cn(
+                        'rounded-full border px-3 py-1.5 text-sm transition',
+                        data.salesCycleLength === opt
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-gray-200 bg-white hover:border-gray-300',
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">Sales Motion</label>
-            <div className="flex flex-wrap gap-2">
-              {SALES_MOTION_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => toggleArray('salesMotionExperience', opt)}
-                  className={cn(
-                    'rounded-full border px-3 py-1.5 text-sm transition',
-                    data.salesMotionExperience.includes(opt)
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-gray-200 bg-white hover:border-gray-300',
-                  )}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Welche Dealgrößen oder ACV-Bandbreiten hast du betreut?</label>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Auch hier zählt dein bisheriges Gesamtbild, nicht nur der aktuelle Job.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {DEAL_SIZE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => toggleArray('dealSizePreference', opt)}
+                      className={cn(
+                        'rounded-full border px-3 py-1.5 text-sm transition',
+                        data.dealSizePreference.includes(opt)
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-gray-200 bg-white hover:border-gray-300',
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Was war bisher deine hauptsächliche Sales Motion?</label>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Mehrfachauswahl ist möglich, wenn du in verschiedenen Setups gearbeitet hast.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SALES_MOTION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => toggleArray('salesMotionExperience', opt)}
+                      className={cn(
+                        'rounded-full border px-3 py-1.5 text-sm transition',
+                        data.salesMotionExperience.includes(opt)
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-gray-200 bg-white hover:border-gray-300',
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-white p-4">
+                <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                  <span>Wie war die Verteilung zwischen Inbound und Outbound?</span>
+                  <span className="text-primary">{getMotionMixLabel(getMotionMixValue(data.salesMotionExperience))}</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={10}
+                  value={getMotionMixValue(data.salesMotionExperience)}
+                  onChange={(e) => update({ salesMotionExperience: withMotionMix(data.salesMotionExperience, Number(e.target.value)) })}
+                  className="w-full accent-primary"
+                />
+                <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                  <span>Inbound-lastig</span>
+                  <span>Ausgewogen</span>
+                  <span>Outbound-lastig</span>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-sm font-medium">Welche Accounts, Regionen oder Territories hast du bisher hauptsächlich betreut?</label>
+                  <input
+                    value={data.territorySize}
+                    onChange={(e) => update({ territorySize: e.target.value })}
+                    placeholder="z.B. DACH Mid-Market, Named Accounts, SMB Deutschland Süd"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">Ø Deal Size (optional)</label>
+                  <input
+                    value={data.averageDealSize}
+                    onChange={(e) => update({ averageDealSize: e.target.value })}
+                    placeholder="z.B. 25000"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">Größter betreuter Deal (optional)</label>
+                  <input
+                    value={data.largestDealClosed}
+                    onChange={(e) => update({ largestDealClosed: e.target.value })}
+                    placeholder="z.B. 120000"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-sm font-medium">Ø Sales Cycle in Tagen (optional)</label>
+                  <input
+                    value={data.averageSalesCycle}
+                    onChange={(e) => update({ averageSalesCycle: e.target.value })}
+                    placeholder="z.B. 45"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </StepCard>
       )}
 
@@ -1523,7 +1718,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       {step === 8 && (
         <StepCard
           title="Skills & Sprachen"
-          description="Welche Sales-Skills und Sprachen bringst du mit?"
+          description="Welche Skills und Sprachen bringst du mit? Auch übertragbare Stärken sind relevant."
         >
           <div>
             <label className="mb-1.5 block text-sm font-medium">Top Skills</label>
@@ -1531,7 +1726,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
               value={data.skills}
               onChange={(v) => update({ skills: v })}
               suggestions={SALES_SKILL_SUGGESTIONS}
-              placeholder="Skill eingeben..."
+              placeholder="z.B. Kommunikation, Discovery, Verhandlung..."
             />
           </div>
 
@@ -1552,7 +1747,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
                     placeholder="Sprache"
                   />
                   <datalist id={`lang-list-${index}`}>
-                    {LANGUAGE_OPTIONS.map((l) => <option key={l} value={l} />)}
+                    {LANGUAGE_OPTIONS.map((language: string) => <option key={language} value={language} />)}
                   </datalist>
                   <select
                     value={lang.level}
@@ -1563,8 +1758,8 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
                     }}
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
                   >
-                    {LANGUAGE_PROFICIENCY_LEVELS.map((l) => (
-                      <option key={l} value={l}>{l}</option>
+                    {LANGUAGE_PROFICIENCY_LEVELS.map((level: string) => (
+                      <option key={level} value={level}>{level}</option>
                     ))}
                   </select>
                   <button
@@ -1606,12 +1801,12 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       {step === 9 && (
         <StepCard
           title="Deine Karriereziele"
-          description="Worauf legst du bei deinem nächsten Schritt Wert?"
+          description="Worauf soll dein nächster Schritt einzahlen – fachlich, gehaltlich und vom Umfeld her?"
         >
           <div>
             <label className="mb-2 block text-sm font-medium">Karriereziele</label>
             <div className="space-y-2">
-              {CAREER_GOAL_OPTIONS.map((goal) => (
+              {CAREER_GOAL_OPTIONS.map((goal: string) => (
                 <MultiChoiceCard
                   key={goal}
                   label={goal}
@@ -1622,10 +1817,14 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
             </div>
           </div>
 
+          <div className="rounded-2xl border bg-muted/20 p-4 text-sm text-muted-foreground">
+            Du kannst hier bewusst auch Ziele auswählen, die über den nächsten Titel hinausgehen, zum Beispiel Branchenwechsel, mehr Lernen oder Weiterentwicklung im Sales.
+          </div>
+
           <div className="pt-2 border-t">
             <label className="mb-2 block text-sm font-medium">Bevorzugte Company-Typen</label>
             <div className="flex flex-wrap gap-2">
-              {COMPANY_TYPE_OPTIONS.map((type) => (
+              {COMPANY_TYPE_OPTIONS.map((type: string) => (
                 <button
                   key={type}
                   type="button"
@@ -1642,18 +1841,6 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
               ))}
             </div>
           </div>
-
-          <div className="pt-2 border-t">
-            <label className="mb-1.5 block text-sm font-medium">Kurzprofil (optional)</label>
-            <textarea
-              value={data.shortBio}
-              onChange={(e) => update({ shortBio: e.target.value })}
-              rows={3}
-              maxLength={1000}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              placeholder="Womit bist du im Software Sales besonders stark?"
-            />
-          </div>
         </StepCard>
       )}
 
@@ -1661,14 +1848,47 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
       {step === 10 && (
         <StepCard
           title="Gehaltsvorstellungen"
-          description="Was sind deine Ziele? Nur sichtbar für Recruiter."
+          description="Zum Schluss kalibrieren wir dein Zielgehalt mit einer groben Marktspanne auf Basis deiner bisherigen Erfahrung."
         >
           <div className="space-y-6">
+            <div className="rounded-2xl border border-primary/10 bg-primary/[0.05] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold">Orientierung laut unserem Erfahrungsmodell</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Erfahrungslevel: {salaryGuidance.label}
+                  </p>
+                </div>
+                {derivedSeniority ? (
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm">
+                    {SENIORITY_LABELS[derivedSeniority as keyof typeof SENIORITY_LABELS]}
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border bg-white px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Grundgehalt</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatSalaryRange(salaryGuidance.baseMin, salaryGuidance.baseMax)}
+                  </p>
+                </div>
+                <div className="rounded-xl border bg-white px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">OTE</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatSalaryRange(salaryGuidance.oteMin, salaryGuidance.oteMax)}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Das ist nur eine Orientierung, damit du eine realistische Spanne als Ausgangspunkt hast.
+              </p>
+            </div>
+
             <div>
               <div className="mb-2 flex items-center justify-between text-sm font-medium">
                 <span>Grundgehalt (Base)</span>
                 <span className="font-semibold text-primary">
-                  {data.salaryExpectationBase.toLocaleString('de-DE')} €
+                  {formatCurrency(data.salaryExpectationBase)}
                 </span>
               </div>
               <input
@@ -1696,7 +1916,7 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
               <div className="mb-2 flex items-center justify-between text-sm font-medium">
                 <span>OTE (On Target Earnings)</span>
                 <span className="font-semibold text-primary">
-                  {Math.max(data.salaryExpectationOte, data.salaryExpectationBase).toLocaleString('de-DE')} €
+                  {formatCurrency(Math.max(data.salaryExpectationOte, data.salaryExpectationBase))}
                 </span>
               </div>
               <input
@@ -1714,27 +1934,6 @@ export function CandidateOnboardingWizard({ entryPoint }: { entryPoint: 'onboard
                 <span>30.000 €</span>
                 <span>400.000 €</span>
               </div>
-            </div>
-
-            <div className="space-y-3 pt-2 border-t">
-              <label className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 text-sm font-medium cursor-pointer hover:bg-gray-50">
-                <span>Open to Work</span>
-                <input
-                  type="checkbox"
-                  checked={data.openToWork}
-                  onChange={(e) => update({ openToWork: e.target.checked })}
-                  className="h-4 w-4 accent-primary"
-                />
-              </label>
-              <label className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 text-sm font-medium cursor-pointer hover:bg-gray-50">
-                <span>Sichtbar für Recruiter</span>
-                <input
-                  type="checkbox"
-                  checked={data.visibleToRecruiters}
-                  onChange={(e) => update({ visibleToRecruiters: e.target.checked })}
-                  className="h-4 w-4 accent-primary"
-                />
-              </label>
             </div>
 
             {/* Summary */}

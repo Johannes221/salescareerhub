@@ -7,7 +7,7 @@ export const APP_CONFIG = {
   shortName: 'SCH',
   domain: 'salescareerhub.de',
   url: env?.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  description: 'Kuratiertes Recruiting für B2B SaaS Sales Rollen im DACH-Raum mit anonymisierten Jobs, recruiter-geführtem Prozess und Sales-Markt-Einblicken.',
+  description: 'Kuratiertes Recruiting für Software-Sales-Rollen im DACH-Raum – für Einsteiger, Quereinsteiger und erfahrene Kandidaten, mit anonymisierten Jobs und persönlicher Begleitung.',
   tagline: 'Kuratiert. Anonymisiert. Persönlich geführt.',
   locale: 'de-DE',
   currency: 'EUR',
@@ -96,7 +96,7 @@ export const SENIORITY_LEVELS = [
 export type SeniorityLevel = (typeof SENIORITY_LEVELS)[number];
 
 export const SENIORITY_LABELS: Record<SeniorityLevel, string> = {
-  junior: 'Junior',
+  junior: 'Junior / Einstieg',
   mid: 'Mid-Level',
   senior: 'Senior',
   lead: 'Lead',
@@ -129,6 +129,12 @@ export const COUNTRIES = ['Deutschland', 'Österreich', 'Schweiz'] as const;
 export type Country = (typeof COUNTRIES)[number];
 
 export const SALES_SKILL_SUGGESTIONS = [
+  'Kommunikation',
+  'Präsentation',
+  'Beratung',
+  'Beziehungsaufbau',
+  'Stakeholder Management',
+  'Lernbereitschaft',
   'SaaS Sales',
   'B2B Sales',
   'Outbound',
@@ -194,6 +200,7 @@ export const SALES_INDUSTRY_OPTIONS = [
 ] as const;
 
 export const SALES_MOTION_OPTIONS = [
+  'Noch keine direkte Sales-Erfahrung',
   'SMB',
   'Mid-Market',
   'Enterprise',
@@ -220,6 +227,8 @@ export const TERRITORY_TYPE_OPTIONS = [
 ] as const;
 
 export const CAREER_GOAL_OPTIONS = [
+  'In Software Sales einsteigen',
+  'Als Quereinsteiger in Sales wechseln',
   'Vom SDR zum AE wechseln',
   'In Enterprise Sales wachsen',
   'Mehr Verantwortung übernehmen',

@@ -57,24 +57,25 @@ const INITIAL: DashboardData = {
 
 function getProfileCompletion(profile: any): { score: number; missing: string[] } {
   if (!profile) return { score: 0, missing: ['Profil anlegen'] };
-  const fields: [string, string][] = [
-    ['firstName', 'Vorname'],
-    ['lastName', 'Nachname'],
-    ['currentRole', 'Aktuelle Rolle'],
-    ['targetRole', 'Zielrolle'],
-    ['location', 'Standort'],
-    ['seniority', 'Seniorität'],
-    ['salaryExpectationOte', 'OTE Erwartung'],
-    ['cvFileName', 'CV hochladen'],
+  const fields: [string, string, (profile: any) => boolean][] = [
+    ['firstName', 'Vorname', (p) => p.firstName],
+    ['lastName', 'Nachname', (p) => p.lastName],
+    ['currentRole', 'Aktuelle Rolle', (p) => p.currentRole],
+    ['targetRole', 'Zielrolle', (p) => p.targetRole],
+    ['location', 'Standort', (p) => p.location],
+    ['seniority', 'Seniorität', (p) => p.seniority],
+    ['salaryExpectationOte', 'OTE Erwartung', (p) => p.salaryExpectationOte],
+    ['cvFileName', 'CV hochladen', (p) => p.cvFileName],
   ];
-  const filled = fields.filter(([key]) => {
-    const val = profile[key];
-    return val !== null && val !== undefined && val !== '' && val !== 0;
-  });
-  const missing = fields.filter(([key]) => {
-    const val = profile[key];
-    return val === null || val === undefined || val === '' || val === 0;
-  }).map(([, label]) => label);
+  const hasValue = (value: unknown) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value !== '';
+    if (typeof value === 'number') return value !== 0;
+    return true;
+  };
+
+  const filled = fields.filter(([,, getValue]) => hasValue(getValue(profile)));
+  const missing = fields.filter(([,, getValue]) => !hasValue(getValue(profile))).map(([, label]) => label);
   return { score: Math.round((filled.length / fields.length) * 100), missing };
 }
 

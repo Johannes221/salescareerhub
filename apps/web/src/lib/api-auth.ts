@@ -16,6 +16,7 @@ type BaseAuthUser = {
   email: string;
   role: string;
   displayName?: string | null;
+  avatarUrl?: string | null;
   companyRole?: string | null;
   isActive: boolean;
   createdAt: Date;

@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import { APP_CONFIG } from '@/lib/config';
-import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
   Briefcase,
@@ -67,6 +66,10 @@ export function CandidateNav() {
   }, []);
 
   const isActive = (href: string, exact?: boolean) => {
+    if (href === '/dashboard/candidate/jobs') {
+      return pathname === href || pathname.startsWith(href + '/') || pathname === '/jobs' || pathname.startsWith('/jobs/');
+    }
+
     if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(href + '/');
   };
