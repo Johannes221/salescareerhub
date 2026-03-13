@@ -11,6 +11,7 @@
     "build": "npm run db:generate:render && npm run build:web",
     "build:all": "turbo build",
     "build:web": "npm run build --workspace @salescareerhub/web",
+    "admin:bootstrap": "npm run bootstrap:admin --workspace @salescareerhub/web",
     "lint": "turbo lint",
     "start": "cd apps/web && npm start",
     "start:web": "npm run start --workspace @salescareerhub/web",

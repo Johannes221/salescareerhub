@@ -107,11 +107,11 @@ type EditableProfile = {
 };
 
 const TABS: Array<{ key: TabKey; label: string; description: string; icon: React.ElementType }> = [
-  { key: 'personal', label: 'Persönliche Daten', description: 'Kontakt, Name und Standort', icon: User },
-  { key: 'career', label: 'Karriereziele', description: 'Rolle, OTE und Zielprofil', icon: Target },
-  { key: 'sales', label: 'Erfahrung & Sales-Fokus', description: 'Hintergrund, Umfeld und optionale Kennzahlen', icon: TrendingUp },
+  { key: 'personal', label: 'Persönliche Daten', description: 'Kontakt und Standort', icon: User },
+  { key: 'career', label: 'Karriereziele', description: 'Rolle und Gehalt', icon: Target },
+  { key: 'sales', label: 'Erfahrung & Sales-Fokus', description: 'Hintergrund und Umfeld', icon: TrendingUp },
   { key: 'documents', label: 'Dokumente', description: 'CV und Unterlagen', icon: FileText },
-  { key: 'preferences', label: 'Präferenzen', description: 'Skills, Sprachen, Wunschumfeld', icon: Globe },
+  { key: 'preferences', label: 'Präferenzen', description: 'Skills und Wunschumfeld', icon: Globe },
 ];
 
 const LOCATION_PREFERENCE_OPTIONS = [
@@ -307,6 +307,10 @@ function buildProfilePayload(profile: EditableProfile) {
   };
 }
 
+function countMissing(checks: boolean[]) {
+  return checks.filter((check) => !check).length;
+}
+
 export function CandidateProfileTabs({
   profile,
   onProfileUpdated,
@@ -321,6 +325,47 @@ export function CandidateProfileTabs({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const salaryGuidance = useMemo(() => getCandidateSalaryGuidance(draft.yearsOfExperience), [draft.yearsOfExperience]);
+  const tabStatus = useMemo<Record<TabKey, { missing: number; done: boolean }>>(() => {
+    const personalMissing = countMissing([
+      Boolean(normalizedProfile.firstName),
+      Boolean(normalizedProfile.lastName),
+      Boolean(normalizedProfile.email),
+      Boolean(normalizedProfile.linkedinUrl),
+      Boolean(normalizedProfile.location),
+    ]);
+    const careerMissing = countMissing([
+      Boolean(normalizedProfile.currentRole),
+      Boolean(normalizedProfile.targetRole || normalizedProfile.desiredJobRoles.length > 0),
+      normalizedProfile.salaryExpectationOte > 0,
+      normalizedProfile.remotePreference.length > 0,
+    ]);
+    const salesMissing = countMissing([
+      normalizedProfile.yearsOfExperience > 0,
+      Boolean(normalizedProfile.seniority),
+      Boolean(
+        normalizedProfile.salesMotionExperience.length > 0
+        || normalizedProfile.dealSizePreference.length > 0
+        || normalizedProfile.salesCycleLength.length > 0
+        || normalizedProfile.industriesExperience.length > 0
+      ),
+    ]);
+    const documentsMissing = countMissing([Boolean(normalizedProfile.cvFileName || normalizedProfile.cvUrl)]);
+    const preferencesMissing = countMissing([
+      normalizedProfile.skills.length > 0,
+      normalizedProfile.languages.length > 0,
+      normalizedProfile.desiredIndustries.length > 0
+        || normalizedProfile.preferredCompanyTypes.length > 0
+        || normalizedProfile.locationPreference.length > 0,
+    ]);
+
+    return {
+      personal: { missing: personalMissing, done: personalMissing === 0 },
+      career: { missing: careerMissing, done: careerMissing === 0 },
+      sales: { missing: salesMissing, done: salesMissing === 0 },
+      documents: { missing: documentsMissing, done: documentsMissing === 0 },
+      preferences: { missing: preferencesMissing, done: preferencesMissing === 0 },
+    };
+  }, [normalizedProfile]);
 
   const beginEdit = (tab: TabKey) => {
     setDraft(normalizeProfile(profile));
@@ -486,11 +531,12 @@ export function CandidateProfileTabs({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           const isEditingThisTab = editingTab === tab.key;
+          const currentStatus = tabStatus[tab.key];
 
           return (
             <button
@@ -516,7 +562,13 @@ export function CandidateProfileTabs({
                     <span className={cn('text-sm font-semibold', isActive ? 'text-foreground' : 'text-foreground/90')}>{tab.label}</span>
                     {isEditingThisTab ? (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Bearbeitung</span>
-                    ) : null}
+                    ) : currentStatus.done ? (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">Vollständig</span>
+                    ) : (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                        {currentStatus.missing} offen
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">{tab.description}</p>
                 </div>

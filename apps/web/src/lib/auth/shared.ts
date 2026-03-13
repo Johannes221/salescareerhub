@@ -63,7 +63,6 @@ export function resolveRequestedRole(requestedRole?: string | null): Role {
 }
 
 export function resolveUserRole(email: string | null | undefined, requestedRole?: string | null): Role {
-  if (isAdminEmail(email)) return ROLES.ADMIN;
   return resolveRequestedRole(requestedRole);
 }
 
@@ -88,6 +87,10 @@ export function getProviderFromSignInProvider(provider?: string | null) {
     default:
       return sanitizeEnvValue(provider) || 'unknown';
   }
+}
+
+export function isAllowedAdminProvider(provider?: string | null) {
+  return getProviderFromSignInProvider(provider) === 'email';
 }
 
 export function getDisplayNameFallback(email?: string | null, displayName?: string | null) {

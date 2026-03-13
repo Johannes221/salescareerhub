@@ -1,23 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireAdmin } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
-
-async function requireAdmin(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-    return user?.role === 'admin' ? user : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const job = await prisma.job.findUnique({
       where: { id: params.id },

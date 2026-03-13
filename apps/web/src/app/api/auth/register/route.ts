@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirebaseAdminErrorMessage, verifyIdToken } from '@/lib/auth/server';
+import { deleteFirebaseUser, getFirebaseAdminErrorMessage, verifyIdToken } from '@/lib/auth/server';
 import {
   getDisplayNameFallback,
   getProviderFromSignInProvider,
+  isAdminEmail,
+  isAllowedAdminProvider,
   normalizeEmail,
   resolveDefaultCompanyRole,
   resolveUserRole,
@@ -37,14 +39,28 @@ function getPrismaConnectionErrorMessage(error: unknown) {
 
 async function findExistingUser(firebaseUid: string, email: string) {
   try {
-    return await prisma.user.findUnique({ where: { firebaseUid } });
+    return await prisma.user.findUnique({
+      where: { firebaseUid },
+      include: { adminProfile: true },
+    });
   } catch (error) {
     if (getUnknownPrismaField(error) !== 'firebaseUid') {
       throw error;
     }
   }
 
-  return prisma.user.findUnique({ where: { email } });
+  return prisma.user.findUnique({
+    where: { email },
+    include: { adminProfile: true },
+  });
+}
+
+async function cleanupUnauthorizedFirebaseAccount(uid: string) {
+  try {
+    await deleteFirebaseUser(uid);
+  } catch (error) {
+    console.error('Unauthorized Firebase user cleanup error:', error);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -61,6 +77,7 @@ export async function POST(req: NextRequest) {
     const requestedCompanyRole = typeof body.companyRole === 'string' ? body.companyRole : undefined;
     const requestedDisplayName = typeof body.displayName === 'string' ? body.displayName : undefined;
     const normalizedEmail = normalizeEmail(decoded.email);
+    const provider = getProviderFromSignInProvider(decoded.firebase?.sign_in_provider);
 
     if (!normalizedEmail) {
       return NextResponse.json({ success: false, error: 'E-Mail-Adresse fehlt im Auth-Provider' }, { status: 400 });
@@ -69,7 +86,10 @@ export async function POST(req: NextRequest) {
     const existingByUid = await findExistingUser(decoded.uid, normalizedEmail);
     const existingByEmail = existingByUid?.email === normalizedEmail
       ? null
-      : await prisma.user.findUnique({ where: { email: normalizedEmail } });
+      : await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          include: { adminProfile: true },
+        });
 
     if (existingByEmail && existingByEmail.firebaseUid !== decoded.uid) {
       return NextResponse.json(
@@ -79,11 +99,48 @@ export async function POST(req: NextRequest) {
     }
 
     const existingUser = existingByUid ?? existingByEmail;
+    const reservedAdminEmail = isAdminEmail(normalizedEmail);
+    const isBootstrappedAdmin = existingUser?.role === ROLES.ADMIN && Boolean(existingUser.adminProfile);
+
+    if (reservedAdminEmail && !isBootstrappedAdmin) {
+      if (!existingUser) {
+        await cleanupUnauthorizedFirebaseAccount(decoded.uid);
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Diese Admin-E-Mail ist reserviert. Der Zugriff wird nur für einen vorab im Backend angelegten Admin freigeschaltet.',
+        },
+        { status: 403 },
+      );
+    }
+
+    if (isBootstrappedAdmin && !reservedAdminEmail) {
+      return NextResponse.json(
+        { success: false, error: 'Dieser Admin-Zugang ist serverseitig nicht freigeschaltet.' },
+        { status: 403 },
+      );
+    }
+
+    if (isBootstrappedAdmin && !isAllowedAdminProvider(decoded.firebase?.sign_in_provider)) {
+      return NextResponse.json(
+        { success: false, error: 'Admin-Login ist nur mit E-Mail und Passwort erlaubt.' },
+        { status: 403 },
+      );
+    }
+
+    if (isBootstrappedAdmin && !decoded.email_verified) {
+      return NextResponse.json(
+        { success: false, error: 'Die Admin-E-Mail muss in Firebase als verifiziert markiert sein.' },
+        { status: 403 },
+      );
+    }
+
     const role = (existingUser?.role as (typeof ROLES)[keyof typeof ROLES] | undefined) || resolveUserRole(normalizedEmail, requestedRole);
     const existingCompanyRole = typeof existingUser?.companyRole === 'string' ? existingUser.companyRole : undefined;
     const companyRole = resolveDefaultCompanyRole(role, existingCompanyRole ?? requestedCompanyRole);
     const displayName = getDisplayNameFallback(normalizedEmail, requestedDisplayName || decoded.name);
-    const provider = getProviderFromSignInProvider(decoded.firebase?.sign_in_provider);
 
     const baseData = {
       firebaseUid: decoded.uid,
@@ -102,10 +159,12 @@ export async function POST(req: NextRequest) {
       candidateProfile?: true;
       company?: true;
       managedCompany?: true;
+      adminProfile?: true;
     } = {
       candidateProfile: true,
       company: true,
       managedCompany: true,
+      adminProfile: true,
     };
 
     let userData: typeof baseData & Record<string, unknown> = { ...baseData };
@@ -129,6 +188,11 @@ export async function POST(req: NextRequest) {
 
         if (unknownField === 'managedCompany' && include.managedCompany) {
           delete include.managedCompany;
+          continue;
+        }
+
+        if (unknownField === 'adminProfile' && include.adminProfile) {
+          delete include.adminProfile;
           continue;
         }
 

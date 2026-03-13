@@ -14,10 +14,9 @@ import {
   ChevronRight,
   Clock,
   FileText,
-  Filter,
+  GitBranch,
   LayoutList,
   MessageSquare,
-  X,
 } from 'lucide-react';
 
 const PIPELINE_STAGES = [
@@ -48,7 +47,7 @@ export default function CandidateBewerbungenPage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [view, setView] = useState<'list' | 'pipeline'>('list');
+  const [view, setView] = useState<'list' | 'pipeline'>('pipeline');
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
   useEffect(() => { fetchApplications(); }, []);
@@ -75,6 +74,7 @@ export default function CandidateBewerbungenPage() {
   const offerCount = applications.filter((a: any) => a.status === 'contract_negotiation').length;
   const rejectedCount = applications.filter((a: any) => a.status === 'rejected').length;
   const selectedApplication = filtered.find((app: any) => app.id === selectedApplicationId) || filtered[0] || null;
+  const selectedStageIndex = selectedApplication ? getStageIndex(selectedApplication.status) : -1;
 
   useEffect(() => {
     if (!filtered.length) {
@@ -119,16 +119,69 @@ export default function CandidateBewerbungenPage() {
         </div>
       ) : (
         <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard label="Aktive Prozesse" value={activeCount} accent="text-blue-600" />
-            <SummaryCard label="Interviews" value={interviewCount} accent="text-cyan-600" />
-            <SummaryCard label="Angebote" value={offerCount} accent="text-emerald-600" />
-            <SummaryCard label="Absagen" value={rejectedCount} accent="text-red-500" />
+          <div className="rounded-[28px] border bg-background p-5 shadow-sm md:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Pipeline-Überblick</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight">Behalte jeden Bewerbungsprozess auf einen Blick im Griff</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Die Pipeline ist dein Hauptüberblick: aktueller Schritt, nächste Aktion und offene Termine sind direkt sichtbar.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <MetricPill label="Aktiv" value={activeCount} accent="bg-blue-50 text-blue-700" />
+                <MetricPill label="Interviews" value={interviewCount} accent="bg-cyan-50 text-cyan-700" />
+                <MetricPill label="Angebote" value={offerCount} accent="bg-emerald-50 text-emerald-700" />
+                <MetricPill label="Absagen" value={rejectedCount} accent="bg-red-50 text-red-600" />
+              </div>
+            </div>
+
+            {selectedApplication && (
+              <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                <div className="rounded-3xl border border-border/70 bg-muted/20 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold">{selectedApplication.job?.title || 'Job'}</p>
+                        <StatusBadge status={selectedApplication.status} />
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{getPublicCompanyLabel(selectedApplication.job)}</p>
+                    </div>
+                    {typeof selectedApplication.fitScore === 'number' && (
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Match</p>
+                        <p className="mt-1 text-xl font-bold text-emerald-700">{selectedApplication.fitScore}%</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4">
+                    <PipelineOverview currentStatus={selectedApplication.status} />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                  <DetailCard
+                    label="Aktueller Schritt"
+                    value={selectedApplication.currentStepLabel || APPLICATION_STATUS_LABELS[selectedApplication.status as keyof typeof APPLICATION_STATUS_LABELS] || selectedApplication.status}
+                    helper={`Beworben ${formatRelativeDate(selectedApplication.createdAt)}`}
+                  />
+                  <DetailCard
+                    label="Nächster Schritt"
+                    value={selectedApplication.nextStep || 'Wird geprüft'}
+                    helper={selectedApplication.nextStepDate ? new Date(selectedApplication.nextStepDate).toLocaleString('de-DE') : 'Noch ohne Termin'}
+                  />
+                  <DetailCard
+                    label="Status"
+                    value={selectedStageIndex >= 0 ? PIPELINE_STAGES[selectedStageIndex]?.label || 'Aktiv' : 'Aktiv'}
+                    helper={selectedApplication.calendarAction ? 'Termin auswählbar' : 'Aktuell kein Termin offen'}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Filter + View toggle */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2 overflow-x-auto">
               {STATUS_FILTER_OPTIONS.map((opt) => (
                 <button
@@ -145,40 +198,41 @@ export default function CandidateBewerbungenPage() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setView('list')}
-                className={`rounded-lg p-2 transition-colors ${view === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setView('pipeline')}
-                className={`rounded-lg p-2 transition-colors ${view === 'pipeline' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-colors ${view === 'pipeline' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
               >
-                <Filter className="h-4 w-4" />
+                <GitBranch className="h-4 w-4" />
+                Pipeline
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm transition-colors ${view === 'list' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+              >
+                <LayoutList className="h-4 w-4" />
+                Liste
               </button>
             </div>
           </div>
 
-          {/* Pipeline view */}
           {view === 'pipeline' ? (
             <div className="overflow-x-auto pb-4">
               <div className="flex gap-3 min-w-max">
                 {PIPELINE_STAGES.filter((s) => !['withdrawn'].includes(s.key)).map((stage) => {
                   const stageApps = filtered.filter((a: any) => a.status === stage.key);
                   return (
-                    <div key={stage.key} className="w-64 shrink-0">
-                      <div className="flex items-center gap-2 mb-3">
+                    <div key={stage.key} className="w-[272px] shrink-0">
+                      <div className="mb-3 flex items-center gap-2">
                         <span className={`h-2 w-2 rounded-full ${stage.color}`} />
                         <span className="text-sm font-medium">{stage.label}</span>
                         <span className="text-xs text-muted-foreground">({stageApps.length})</span>
                       </div>
                       <div className="space-y-2">
                         {stageApps.length === 0 ? (
-                          <div className="rounded-lg border border-dashed p-4 text-center">
+                          <div className="min-h-[116px] rounded-2xl border border-dashed bg-background/70 p-4 text-center">
                             <p className="text-xs text-muted-foreground">Keine Bewerbungen</p>
                           </div>
                         ) : (
@@ -187,18 +241,24 @@ export default function CandidateBewerbungenPage() {
                               key={app.id}
                               type="button"
                               onClick={() => setSelectedApplicationId(app.id)}
-                              className={`w-full rounded-lg border bg-background p-3 text-left hover:shadow-sm hover:border-primary/20 transition-all ${
+                              className={`w-full rounded-2xl border bg-background p-4 text-left transition-all hover:border-primary/20 hover:shadow-sm ${
                                 selectedApplication?.id === app.id ? 'border-primary/30 ring-1 ring-primary/10' : ''
                               }`}
                             >
+                              <div className={`mb-3 h-1.5 rounded-full ${stage.color}`} />
                               <p className="font-medium text-sm truncate">{app.job?.title || 'Job'}</p>
                               <p className="text-xs text-muted-foreground mt-0.5 truncate">{getPublicCompanyLabel(app.job)}</p>
-                              {typeof app.fitScore === 'number' && (
-                                <p className="mt-1.5 text-xs font-semibold text-emerald-700">Match {app.fitScore}%</p>
-                              )}
-                              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                                <Clock className="h-3 w-3" />{formatRelativeDate(app.createdAt)}
-                              </p>
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                {typeof app.fitScore === 'number' && (
+                                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                    Match {app.fitScore}%
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Clock className="h-3 w-3" />
+                                  {formatRelativeDate(app.createdAt)}
+                                </span>
+                              </div>
                             </button>
                           ))
                         )}
@@ -331,7 +391,9 @@ export default function CandidateBewerbungenPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <PipelineOverview currentStatus={selectedApplication.status} />
+
+                <div className="grid gap-3 md:grid-cols-3">
                   <DetailCard
                     label="Aktueller Schritt"
                     value={selectedApplication.currentStepLabel || APPLICATION_STATUS_LABELS[selectedApplication.status as keyof typeof APPLICATION_STATUS_LABELS] || selectedApplication.status}
@@ -341,6 +403,11 @@ export default function CandidateBewerbungenPage() {
                     label="Nächster Schritt"
                     value={selectedApplication.nextStep || 'Wird geprüft'}
                     helper={selectedApplication.nextStepDate ? new Date(selectedApplication.nextStepDate).toLocaleString('de-DE') : 'Noch ohne Termin'}
+                  />
+                  <DetailCard
+                    label="Aktivität"
+                    value={selectedApplication.calendarAction ? 'Termin offen' : 'Kein Termin offen'}
+                    helper={selectedApplication.candidateMessage ? 'Nachricht vorhanden' : 'Keine zusätzliche Nachricht'}
                   />
                 </div>
 
@@ -459,11 +526,11 @@ export default function CandidateBewerbungenPage() {
   );
 }
 
-function SummaryCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+function MetricPill({ label, value, accent }: { label: string; value: number; accent: string }) {
   return (
-    <div className="rounded-xl border bg-background p-4">
-      <p className={`text-2xl font-bold ${accent}`}>{value}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
+    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium ${accent}`}>
+      <span className="text-base font-semibold">{value}</span>
+      <span>{label}</span>
     </div>
   );
 }
@@ -474,6 +541,39 @@ function DetailCard({ label, value, helper }: { label: string; value: string; he
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{helper}</p>
+    </div>
+  );
+}
+
+function PipelineOverview({ currentStatus }: { currentStatus: string }) {
+  const visibleStages = PIPELINE_STAGES.filter((stage) => !['withdrawn'].includes(stage.key));
+  const currentIndex = visibleStages.findIndex((stage) => stage.key === currentStatus);
+
+  return (
+    <div className="rounded-2xl border border-border/70 bg-background p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium">Prozessstatus</p>
+        <p className="text-xs text-muted-foreground">
+          {currentIndex >= 0 ? `${currentIndex + 1} / ${visibleStages.length}` : 'Aktiv'}
+        </p>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-4 xl:grid-cols-8">
+        {visibleStages.map((stage, index) => {
+          const isActive = stage.key === currentStatus;
+          const isPast = currentIndex >= 0 && index < currentIndex;
+          return (
+            <div key={stage.key} className="space-y-2">
+              <div className={`h-2 rounded-full ${isActive || isPast ? stage.color : 'bg-muted'}`} />
+              <div>
+                <p className={`text-xs font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{stage.label}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {isActive ? 'Aktuell' : isPast ? 'Erledigt' : 'Danach'}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

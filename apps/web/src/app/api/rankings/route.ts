@@ -1,23 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser, isAdminUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
 import { ensureRankingSnapshots, getCurrentRankingPeriod, DEFAULT_RANKING_CATEGORY } from '@/lib/rankings';
-import { verifyIdToken } from '@/lib/auth/server';
 
 async function includeCompanyNames(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return false;
-
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({
-      where: { firebaseUid: decoded.uid },
-      select: { role: true },
-    });
-
-    return user?.role === 'admin';
-  } catch {
-    return false;
-  }
+  const user = await getAuthUser(req);
+  return user ? isAdminUser(user) : false;
 }
 
 export async function GET(req: NextRequest) {

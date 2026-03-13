@@ -759,24 +759,33 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
             <Card className="rounded-[28px] border-border/70 shadow-sm">
               <CardContent className="p-6">
                 {typeof matchScore === 'number' && isCandidate ? (
-                  <div className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Profil-Match</p>
-                    <p className="mt-2 text-4xl font-bold text-emerald-700">{matchScore}%</p>
-                    {requiredFitGroups.length > 0 ? (
-                      <p className="mt-2 text-sm text-emerald-900/80">
-                        {matchedRequiredCount} von {requiredFitGroups.length} Pflichtbereichen deckst du bereits ab.
-                      </p>
-                    ) : null}
+                  <div className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Profil-Match</p>
+                        <p className="mt-2 text-3xl font-bold text-emerald-700">{matchScore}%</p>
+                      </div>
+                      {requiredFitGroups.length > 0 ? (
+                        <div className="rounded-2xl border border-emerald-200 bg-background/70 px-3 py-2 text-right">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">Pflichtkriterien</p>
+                          <p className="mt-1 text-sm font-semibold text-emerald-900">
+                            {matchedRequiredCount} / {requiredFitGroups.length}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
                     {matchReasons?.length > 0 ? (
-                      <div className="mt-3 space-y-2">
-                        {matchReasons.slice(0, 3).map((reason: string) => (
-                          <p key={reason} className="text-sm leading-5 text-emerald-900/80">{reason}</p>
+                      <div className="mt-4 space-y-2">
+                        {matchReasons.slice(0, 2).map((reason: string) => (
+                          <div key={reason} className="rounded-2xl border border-emerald-200/70 bg-background/60 px-3 py-2 text-sm leading-5 text-emerald-900/80">
+                            {reason}
+                          </div>
                         ))}
                       </div>
                     ) : null}
                     {requiredFitGroups.length > 0 ? (
                       <div className="mt-4 grid gap-3">
-                        {requiredFitGroups.slice(0, 3).map((group: RequirementFitGroup) => (
+                        {requiredFitGroups.slice(0, 2).map((group: RequirementFitGroup) => (
                           <RequirementFitCard key={`${group.category}-${group.key}`} group={group} />
                         ))}
                       </div>
@@ -808,34 +817,63 @@ export default function JobDetailPage({ params }: { params: { slug: string } }) 
                         <Sparkles className="h-3.5 w-3.5" />
                         Bewerbung in 1 Schritt
                       </div>
-                      <h2 className="mt-4 text-2xl font-semibold">Bewirb dich auf diese Stelle</h2>
+                      <h2 className="mt-3 text-xl font-semibold">Bewirb dich auf diese Stelle</h2>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        Kurzer Match-Check, dann wird dein Profil übernommen. Du ergänzt nur Nachricht und optionale Dokumente.
+                        Dein Profil wird übernommen. Du ergänzt nur Nachricht und optionale Dokumente.
                       </p>
                     </div>
 
                     {isCandidate ? (
                       <>
-                        <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-                          <div className="flex items-start gap-3">
-                            <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
-                            <div>
-                              <p className="text-sm font-medium">Profil wird vorbefüllt</p>
-                              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                                LinkedIn, Sales-Erfahrung, aktuelle Rolle und vorhandene Dokumente kommen direkt aus deinem Profil.
-                              </p>
+                        <div className="space-y-3">
+                          <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+                            <div className="flex items-start gap-3">
+                              <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
+                              <div>
+                                <p className="text-sm font-medium">Profil wird vorbefüllt</p>
+                                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                  LinkedIn, Sales-Erfahrung, aktuelle Rolle und vorhandene Dokumente kommen direkt aus deinem Profil.
+                                </p>
+                              </div>
                             </div>
                           </div>
+                          {profileIssues.length > 0 ? (
+                            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-amber-900">Vor dem Bewerben fehlen noch Profildaten</p>
+                                  <p className="mt-1 text-xs leading-5 text-amber-900/80">
+                                    Ergänze zuerst die fehlenden Angaben, damit dein Profil vollständig übernommen werden kann.
+                                  </p>
+                                  <div className="mt-3 space-y-1">
+                                    {profileIssues.map((issue) => (
+                                      <p key={issue} className="text-xs text-amber-900/80">{issue}</p>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                              <p className="text-sm font-medium text-emerald-900">Dein Profil ist bereit</p>
+                              <p className="mt-1 text-xs leading-5 text-emerald-900/80">
+                                Du kannst die Bewerbung direkt starten und im nächsten Schritt optional noch Kontext ergänzen.
+                              </p>
+                            </div>
+                          )}
                         </div>
 
-                        <div className="space-y-4 pt-1">
-                          <Button className="h-12 w-full rounded-2xl" onClick={handleApplyClick}>
-                            Bewerbung starten
+                        <div className="space-y-3 pt-1">
+                          <Button className="h-12 w-full rounded-2xl" onClick={handleApplyClick} disabled={!canSubmitApplication}>
+                            {canSubmitApplication ? 'Bewerbung starten' : 'Profil zuerst vervollständigen'}
                             <Send className="ml-2 h-4 w-4" />
                           </Button>
 
-                          <Link href="/dashboard/candidate/profil" className="block">
-                            <Button variant="outline" className="h-12 w-full rounded-2xl">Profil ansehen / bearbeiten</Button>
+                          <Link href={canSubmitApplication ? '/dashboard/candidate/profil' : '/dashboard/onboarding?mode=edit'} className="block">
+                            <Button variant="outline" className="h-12 w-full rounded-2xl">
+                              {canSubmitApplication ? 'Profil ansehen / bearbeiten' : 'Fehlende Angaben ergänzen'}
+                            </Button>
                           </Link>
                         </div>
                       </>

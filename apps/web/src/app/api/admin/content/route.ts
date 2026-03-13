@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireAdmin } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 import { slugify } from '@/lib/utils';
-
-async function requireAdmin(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-    return user?.role === 'admin' ? user : null;
-  } catch { return null; }
-}
 
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
     const posts = await prisma.contentPost.findMany({ orderBy: { createdAt: 'desc' } });
     return NextResponse.json({ success: true, data: posts });
   } catch { return NextResponse.json({ success: false, error: 'Fehler' }, { status: 500 }); }
@@ -25,7 +15,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const body = await req.json();
     const { title, contentType, excerpt, body: postBody, coverImageUrl, authorName, tags } = body;
@@ -51,7 +41,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const body = await req.json();
     const { id, ...updateData } = body;

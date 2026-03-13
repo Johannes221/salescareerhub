@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyIdToken, verifySessionCookie } from './auth/server';
-import { AUTH_SESSION_COOKIE, normalizeEmail } from './auth/shared';
+import { AUTH_SESSION_COOKIE, isAdminEmail, normalizeEmail } from './auth/shared';
 import { COMPANY_MEMBER_ROLES, ROLES, type CompanyMemberRole, type Role } from './config';
 import { prisma } from './db';
 
@@ -8,6 +8,7 @@ const authUserInclude = {
   candidateProfile: true,
   company: true,
   managedCompany: true,
+  adminProfile: true,
 };
 
 type BaseAuthUser = {
@@ -57,6 +58,9 @@ type BaseAuthUser = {
     city?: string | null;
     industry?: string | null;
     createdAt: Date;
+  } | null;
+  adminProfile?: {
+    id: string;
   } | null;
 };
 
@@ -108,10 +112,12 @@ async function findAuthUserByFirebaseUid(firebaseUid: string, email?: string | n
     candidateProfile?: true;
     company?: true;
     managedCompany?: true;
+    adminProfile?: true;
   } = {
     candidateProfile: true,
     company: true,
     managedCompany: true,
+    adminProfile: true,
   };
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -175,14 +181,28 @@ export async function getAuthUser(req: NextRequest): Promise<AuthUser | null> {
       return null;
     }
 
-    return augmentAuthUser(user);
+    const authUser = augmentAuthUser(user);
+
+    if (authUser.role === ROLES.ADMIN && !isAdminUser(authUser)) {
+      return null;
+    }
+
+    return authUser;
   } catch {
     return null;
   }
 }
 
 export function hasRole(user: AuthUser, role: Role) {
+  if (role === ROLES.ADMIN) {
+    return isAdminUser(user);
+  }
+
   return user.role === role;
+}
+
+export function isAdminUser(user: AuthUser) {
+  return user.role === ROLES.ADMIN && Boolean(user.adminProfile) && isAdminEmail(user.email);
 }
 
 export function isCompanyUser(user: AuthUser) {

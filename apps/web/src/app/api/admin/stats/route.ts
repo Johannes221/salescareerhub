@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireAdmin } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 import { buildDailySeries, getAnalyticsWindowStart } from '@/lib/analytics';
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
-    }
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
-    }
+    const user = await requireAdmin(req);
+    if (!isUser(user)) return user;
 
     const analyticsStart = getAnalyticsWindowStart(7);
 

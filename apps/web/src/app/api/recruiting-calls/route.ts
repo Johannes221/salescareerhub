@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/api-auth';
+import { getAuthUser, isAdminUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
 import { RECRUITING_CALL_TYPES, RECRUITING_CALL_TYPE_LABELS } from '@/lib/config';
 import { buildCalendarUrl } from '@/lib/utils';
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
     }
 
-    if (user.role === 'admin') {
+    if (isAdminUser(user)) {
       const calls = await prisma.recruitingCall.findMany({
         include: {
           candidate: {
@@ -120,15 +120,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const admins = await prisma.user.findMany({
-      where: { role: 'admin' },
-      select: { id: true },
+    const admins = await prisma.adminUser.findMany({
+      select: { userId: true },
     });
 
     if (admins.length > 0) {
       await prisma.notification.createMany({
         data: admins.map((admin) => ({
-          userId: admin.id,
+          userId: admin.userId,
           type: 'recruiting_call_booked',
           title: 'Neuer Recruiting Call',
           message: `${user.candidateProfile?.firstName} ${user.candidateProfile?.lastName} hat einen ${label} gebucht.`,

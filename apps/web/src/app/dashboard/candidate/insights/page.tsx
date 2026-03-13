@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
+  BriefcaseBusiness,
   BarChart3,
   BookOpen,
   ChevronRight,
@@ -24,6 +23,7 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
+type ReportMode = 'general' | 'job';
 
 const SALARY_DATA = [
   { role: 'SDR', base: '38.000 – 48.000 €', ote: '52.000 – 65.000 €', median: '58.000 €' },
@@ -108,10 +108,12 @@ const ROLE_OPTIONS = [
 const SENIORITY_OPTIONS = ['Junior', 'Mid-Level', 'Senior', 'Lead', 'Director', 'VP'];
 const COUNTRY_OPTIONS = ['Deutschland', 'Österreich', 'Schweiz'];
 const WORK_MODEL_OPTIONS = ['Remote', 'Hybrid', 'Vor Ort'];
-const COMPANY_SIZE_OPTIONS = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5000+'];
+const COMPANY_SIZE_OPTIONS = ['1-10', '11-50', '51-200', '201-500', '501-1000', '5000+'];
+const JOB_REFERENCE_OPTIONS = ['Aktuelle Stelle', 'Laufender Bewerbungsprozess', 'Erhaltenes Angebot', 'Vergleich mit konkreter Ausschreibung'];
 
 export default function InsightsPage() {
   const [activeTab, setActiveTab] = useState<TabKey>('reports');
+  const [contributeMode, setContributeMode] = useState<ReportMode>('general');
   const [contributeForm, setContributeForm] = useState({
     role: '',
     seniority: '',
@@ -125,8 +127,31 @@ export default function InsightsPage() {
     yearsExperience: '',
     industry: '',
     comment: '',
+    referenceType: '',
+    referenceJobTitle: '',
+    referenceContext: '',
+    referenceEmployerStage: '',
   });
   const [submitState, setSubmitState] = useState({ loading: false, success: false, error: '' });
+
+  const resetContributeForm = () => ({
+    role: '',
+    seniority: '',
+    country: '',
+    region: '',
+    baseSalary: '',
+    ote: '',
+    variableComp: '',
+    companySize: '',
+    workModel: '',
+    yearsExperience: '',
+    industry: '',
+    comment: '',
+    referenceType: '',
+    referenceJobTitle: '',
+    referenceContext: '',
+    referenceEmployerStage: '',
+  });
 
   const handleContributeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,10 +159,7 @@ export default function InsightsPage() {
     // Simulate submission
     await new Promise((r) => setTimeout(r, 1000));
     setSubmitState({ loading: false, success: true, error: '' });
-    setContributeForm({
-      role: '', seniority: '', country: '', region: '', baseSalary: '', ote: '',
-      variableComp: '', companySize: '', workModel: '', yearsExperience: '', industry: '', comment: '',
-    });
+    setContributeForm(resetContributeForm());
   };
 
   return (
@@ -301,29 +323,93 @@ export default function InsightsPage() {
       )}
 
       {activeTab === 'contribute' && (
-        <div className="max-w-2xl">
-          <div className="rounded-xl border bg-background p-6 lg:p-8">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
+          <div className="rounded-[28px] border bg-background p-6 shadow-sm lg:p-8">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold">Gehaltsreport einreichen</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Hilf anderen Sales Kandidaten, bessere Markttransparenz zu bekommen. Alle Angaben sind anonym.
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Salary Intelligence</p>
+              <h2 className="mt-2 text-xl font-semibold">Gehaltsreport einreichen</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Teile anonym deine Vergütung und hilf anderen Sales Professionals mit realistischeren Benchmarks.
               </p>
             </div>
 
+            <div className="mb-6 grid gap-3 md:grid-cols-2">
+              <ContributionModeCard
+                title="Allgemeiner Report"
+                description="Für deine aktuelle oder letzte Rolle, unabhängig von einer konkreten Stelle."
+                active={contributeMode === 'general'}
+                icon={BarChart3}
+                onClick={() => setContributeMode('general')}
+              />
+              <ContributionModeCard
+                title="Stellenbezogener Report"
+                description="Wenn sich dein Gehalt direkt auf eine konkrete Rolle, Ausschreibung oder ein Angebot bezieht."
+                active={contributeMode === 'job'}
+                icon={BriefcaseBusiness}
+                onClick={() => setContributeMode('job')}
+              />
+            </div>
+
             {submitState.success ? (
-              <div className="text-center py-8">
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50/70 px-6 py-10 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mx-auto mb-4">
                   <FileText className="h-6 w-6 text-green-600" />
                 </div>
                 <h3 className="font-semibold mb-1">Vielen Dank!</h3>
                 <p className="text-sm text-muted-foreground mb-4">Dein Report wurde erfolgreich eingereicht.</p>
-                <Button variant="outline" size="sm" onClick={() => setSubmitState({ loading: false, success: false, error: '' })}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSubmitState({ loading: false, success: false, error: '' });
+                    setContributeForm(resetContributeForm());
+                  }}
+                >
                   Weiteren Report einreichen
                 </Button>
               </div>
             ) : (
               <form onSubmit={handleContributeSubmit} className="space-y-5">
-                <div className="grid gap-4 sm:grid-cols-2">
+                {contributeMode === 'job' && (
+                  <div className="rounded-3xl border border-border/70 bg-muted/20 p-4">
+                    <div className="mb-4">
+                      <p className="text-sm font-semibold">Stellenbezug</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Gib an, worauf sich der Report konkret bezieht, damit Benchmarks später kontextbezogen ausgewertet werden können.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormSelect
+                        label="Bezug *"
+                        value={contributeForm.referenceType}
+                        onChange={(v) => setContributeForm((p) => ({ ...p, referenceType: v }))}
+                        options={JOB_REFERENCE_OPTIONS}
+                        required
+                      />
+                      <FormField
+                        label="Jobtitel / Stelle *"
+                        value={contributeForm.referenceJobTitle}
+                        onChange={(v) => setContributeForm((p) => ({ ...p, referenceJobTitle: v }))}
+                        placeholder="z. B. Enterprise AE DACH"
+                        required
+                      />
+                      <FormField
+                        label="Kontext / Firma"
+                        value={contributeForm.referenceContext}
+                        onChange={(v) => setContributeForm((p) => ({ ...p, referenceContext: v }))}
+                        placeholder="z. B. Series B SaaS, HealthTech"
+                      />
+                      <FormField
+                        label="Phase / Anlass"
+                        value={contributeForm.referenceEmployerStage}
+                        onChange={(v) => setContributeForm((p) => ({ ...p, referenceEmployerStage: v }))}
+                        placeholder="z. B. Erstangebot oder finaler Prozess"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   <FormSelect
                     label="Aktuelle Rolle *"
                     value={contributeForm.role}
@@ -396,7 +482,7 @@ export default function InsightsPage() {
                     value={contributeForm.industry}
                     onChange={(v) => setContributeForm((p) => ({ ...p, industry: v }))}
                     placeholder="z.B. SaaS, FinTech"
-                    className="sm:col-span-2"
+                    className="md:col-span-2 xl:col-span-3"
                   />
                 </div>
 
@@ -405,29 +491,71 @@ export default function InsightsPage() {
                   <textarea
                     value={contributeForm.comment}
                     onChange={(e) => setContributeForm((p) => ({ ...p, comment: e.target.value }))}
-                    rows={3}
-                    className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20"
-                    placeholder="Zusätzliche Hinweise zu deiner Vergütung..."
+                    rows={4}
+                    className="w-full rounded-2xl border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20"
+                    placeholder={contributeMode === 'job' ? 'Zusätzliche Hinweise zur konkreten Stelle oder zum Angebot...' : 'Zusätzliche Hinweise zu deiner Vergütung...'}
                   />
                 </div>
 
-                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-                  <FileText className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
-                  <span>
-                    Deine Angaben werden anonym gespeichert und ausschließlich für aggregierte Gehaltsstatistiken verwendet.
-                    Es werden keine personenbezogenen Daten veröffentlicht.
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-muted/50 p-4">
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <FileText className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+                    <span>
+                      Deine Angaben werden anonym gespeichert und ausschließlich für aggregierte Gehaltsstatistiken verwendet.
+                      Es werden keine personenbezogenen Daten veröffentlicht.
+                    </span>
+                  </div>
+                  <Button type="submit" disabled={submitState.loading} className="w-full sm:w-auto">
+                    {submitState.loading ? 'Wird eingereicht...' : 'Report einreichen'}
+                  </Button>
                 </div>
 
                 {submitState.error && (
                   <p className="text-sm text-destructive">{submitState.error}</p>
                 )}
-
-                <Button type="submit" disabled={submitState.loading} className="w-full sm:w-auto">
-                  {submitState.loading ? 'Wird eingereicht...' : 'Report einreichen'}
-                </Button>
               </form>
             )}
+          </div>
+
+          <div className="space-y-4">
+            <SidebarNoteCard
+              title={contributeMode === 'general' ? 'Was ist enthalten?' : 'Warum stellenbezogen?'}
+              icon={contributeMode === 'general' ? BarChart3 : BriefcaseBusiness}
+            >
+              <div className="space-y-2 text-sm text-muted-foreground">
+                {contributeMode === 'general' ? (
+                  <>
+                    <p>Ideal für deine aktuelle oder letzte Rolle.</p>
+                    <p>Hilft beim Aufbau belastbarer Benchmarks nach Rolle, Seniorität, Region und Setup.</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Ideal, wenn dein Gehalt direkt an eine konkrete Stelle oder ein Angebot gekoppelt war.</p>
+                    <p>So lassen sich Benchmarks künftig genauer an Jobtyp, Kontext und Prozessphase ausrichten.</p>
+                  </>
+                )}
+              </div>
+            </SidebarNoteCard>
+
+            <SidebarNoteCard title="Anonym & aggregiert" icon={Users}>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Keine Veröffentlichung personenbezogener Daten.</p>
+                <p>Nur aggregierte Auswertung nach Rolle, Region, Seniorität und Arbeitsmodell.</p>
+              </div>
+            </SidebarNoteCard>
+
+            <div className="rounded-3xl border border-border/70 bg-background p-5 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Dein Report</p>
+              <div className="mt-4 space-y-3">
+                <PreviewRow label="Modus" value={contributeMode === 'general' ? 'Allgemeiner Report' : 'Stellenbezogener Report'} />
+                <PreviewRow label="Rolle" value={contributeForm.role || 'Noch nicht gewählt'} />
+                <PreviewRow label="Region" value={[contributeForm.region, contributeForm.country].filter(Boolean).join(', ') || 'Noch nicht gewählt'} />
+                <PreviewRow label="OTE" value={contributeForm.ote ? `${contributeForm.ote} €` : 'Noch nicht angegeben'} />
+                {contributeMode === 'job' && (
+                  <PreviewRow label="Stelle" value={contributeForm.referenceJobTitle || 'Noch nicht angegeben'} />
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -445,6 +573,77 @@ function MetricCard({ label, value, change }: { label: string; value: string; ch
           <span className="text-xs font-medium text-emerald-600">{change}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+function ContributionModeCard({
+  title,
+  description,
+  active,
+  icon: Icon,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  active: boolean;
+  icon: React.ElementType;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-3xl border p-4 text-left transition-all ${
+        active
+          ? 'border-primary/30 bg-primary/5 shadow-sm'
+          : 'bg-background hover:border-primary/20 hover:bg-muted/20'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-2xl ${
+            active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function SidebarNoteCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-3xl border border-border/70 bg-background p-5 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <p className="text-sm font-semibold">{title}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PreviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-2xl border border-border/60 bg-muted/20 px-3 py-2.5">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-right text-sm font-medium">{value}</span>
     </div>
   );
 }

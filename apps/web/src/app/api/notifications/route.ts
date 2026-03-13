@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/api-auth';
+import { getAuthUser, isAdminUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
-    if (user.role !== 'admin') return NextResponse.json({ success: false, error: 'Keine Berechtigung' }, { status: 403 });
+    if (!isAdminUser(user)) return NextResponse.json({ success: false, error: 'Keine Berechtigung' }, { status: 403 });
 
     const { userId, type, title, message, link } = await req.json();
     if (!userId || !title || !message) {

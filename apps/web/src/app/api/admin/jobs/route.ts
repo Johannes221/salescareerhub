@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireAdmin } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 import {
   buildStructuredRequirementsText,
   buildStructuredRequirementTags,
@@ -10,20 +10,10 @@ import {
 import { slugify } from '@/lib/utils';
 import { anonymizeJob, JobAnonymizerError } from '@/services/jobAnonymizer';
 
-async function requireAdmin(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-    return user?.role === 'admin' ? user : null;
-  } catch { return null; }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const body = await req.json();
     const {
@@ -160,7 +150,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || '';
@@ -183,7 +173,7 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const body = await req.json();
     const {

@@ -53,8 +53,10 @@ NODE_ENV=production
    - Without the Apple Developer configuration, Apple login will not complete in production
 
 4. **Admin Login**:
-   - Set `ADMIN_EMAILS` to a comma-separated list of email addresses
-   - Users with one of these emails are automatically synchronized as `admin`
+   - Set `ADMIN_EMAILS` to a comma-separated list of reserved admin email addresses
+   - Public registration no longer creates admin users
+   - Create the master admin explicitly via the bootstrap script with `ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_PASSWORD` and optional `ADMIN_BOOTSTRAP_DISPLAY_NAME`
+   - Admin login is only allowed via E-Mail/Passwort for a pre-created admin account
 
 2. **MongoDB Atlas** (recommended):
    - Create a free cluster

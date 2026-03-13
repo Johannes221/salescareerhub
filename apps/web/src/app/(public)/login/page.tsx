@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { loginWithApple, loginWithEmail, loginWithGoogle, syncCurrentUser } from '@/lib/auth/client';
+import { loginWithApple, loginWithEmail, loginWithGoogle, logout, syncCurrentUser } from '@/lib/auth/client';
 import { APP_CONFIG, COMPANY_MEMBER_ROLES, COMPANY_MEMBER_ROLE_LABELS, type CompanyMemberRole } from '@/lib/config';
 import { Apple, Building2, Chrome, LogIn, AlertCircle, Users } from 'lucide-react';
 
@@ -45,6 +45,7 @@ export default function LoginPage() {
       await refreshUser();
       router.push('/dashboard');
     } catch (err: any) {
+      await logout().catch(() => undefined);
       console.error('Email login failed:', err);
       if (err?.code === 'auth/invalid-credential') {
         setError('E-Mail oder Passwort ist falsch.');
@@ -65,6 +66,7 @@ export default function LoginPage() {
       const credential = provider === 'google' ? await loginWithGoogle() : await loginWithApple();
       await syncSocialUser(credential.user.displayName);
     } catch (err: any) {
+      await logout().catch(() => undefined);
       if (err?.code === 'auth/cancelled-popup-request') {
         return;
       } else if (err?.code === 'auth/popup-closed-by-user') {

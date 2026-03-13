@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { loginWithApple, loginWithEmail, loginWithGoogle, registerWithEmail, syncCurrentUser } from '@/lib/auth/client';
+import { loginWithApple, loginWithEmail, loginWithGoogle, logout, registerWithEmail, syncCurrentUser } from '@/lib/auth/client';
 import { APP_CONFIG } from '@/lib/config';
 import { Apple, Building2, Chrome, UserPlus, AlertCircle, Users } from 'lucide-react';
 
@@ -48,6 +48,7 @@ export default function RegisterPage() {
       await registerWithEmail(email, password);
       await syncUser();
     } catch (err: any) {
+      await logout().catch(() => undefined);
       if (err?.code === 'auth/email-already-in-use') {
         try {
           await loginWithEmail(email, password);
@@ -77,6 +78,7 @@ export default function RegisterPage() {
       const credential = provider === 'google' ? await loginWithGoogle() : await loginWithApple();
       await syncUser(credential.user.displayName);
     } catch (err: any) {
+      await logout().catch(() => undefined);
       if (err?.code === 'auth/cancelled-popup-request') {
         return;
       } else if (err?.code === 'auth/popup-closed-by-user') {

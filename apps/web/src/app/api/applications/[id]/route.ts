@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireAdmin } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
-
-async function getAuthUser(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    return prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-  } catch { return null; }
-}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const user = await getAuthUser(req);
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
-    }
+    const user = await requireAdmin(req);
+    if (!isUser(user)) return user;
 
     const body = await req.json();
     const { status, internalNotes, fitScore, adminNotes, recommendedByAdmin } = body;

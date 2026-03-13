@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/api-auth';
+import { getAuthUser, isAdminUser } from '@/lib/api-auth';
 import { buildApplicationJourney, computeCandidateJobMatch } from '@/lib/candidate-journey';
 import { prisma } from '@/lib/db';
 import { validateFile } from '@/lib/gdpr';
@@ -307,11 +307,11 @@ export async function POST(req: NextRequest) {
     await prisma.job.update({ where: { id: jobId }, data: { interestCount: { increment: 1 } } });
 
     // Create notification for admin
-    const admins = await prisma.user.findMany({ where: { role: 'admin' } });
+    const admins = await prisma.adminUser.findMany({ select: { userId: true } });
     for (const admin of admins) {
       await prisma.notification.create({
         data: {
-          userId: admin.id,
+          userId: admin.userId,
           type: 'new_application',
           title: 'Neue Bewerbung',
           message: `${candidateProfile.firstName} ${candidateProfile.lastName} hat sich auf "${job.title}" beworben.`,
@@ -354,7 +354,7 @@ export async function GET(req: NextRequest) {
     const user = await getAuthUser(req);
     if (!user) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 401 });
 
-    if (user.role === 'admin') {
+    if (isAdminUser(user)) {
       const { searchParams } = new URL(req.url);
       const status = searchParams.get('status') || '';
       const search = searchParams.get('search') || '';

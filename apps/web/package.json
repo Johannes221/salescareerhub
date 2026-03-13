@@ -6,6 +6,7 @@
     "dev": "NODE_OPTIONS=\"--max-old-space-size=512\" next dev",
     "build": "NODE_OPTIONS=\"--max-old-space-size=384\" prisma generate && next build",
     "start": "NODE_OPTIONS=\"--max-old-space-size=384\" next start",
+    "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

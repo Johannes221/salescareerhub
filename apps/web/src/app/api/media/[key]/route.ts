@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import { getAuthUser, isAdminUser } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,23 +49,13 @@ async function getFounderPhotoUrlSetting() {
 }
 
 async function requireAdminUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
+  const user = await getAuthUser(request);
 
-  if (!authHeader?.startsWith('Bearer ')) {
+  if (!user || !isAdminUser(user)) {
     return null;
   }
 
-  const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-  const user = await prisma.user.findUnique({
-    where: { firebaseUid: decoded.uid },
-    select: { id: true, role: true },
-  });
-
-  if (!user || user.role !== 'admin') {
-    return null;
-  }
-
-  return user;
+  return { id: user.id };
 }
 
 export async function GET(

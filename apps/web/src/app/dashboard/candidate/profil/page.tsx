@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 import { CandidateProfileTabs } from '@/components/candidate-profile-tabs';
 import { ProfileAvatarUploader } from '@/components/profile-avatar-uploader';
+import { Button } from '@/components/ui/button';
 import { getIdToken } from '@/lib/auth/client';
 import { useAuth } from '@/lib/auth-context';
-import { BadgeCheck, CircleAlert, Sparkles } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CircleAlert, PencilLine, Sparkles } from 'lucide-react';
 
 export default function CandidateProfilePage() {
   const { dbUser, refreshUser } = useAuth();
@@ -46,7 +48,8 @@ export default function CandidateProfilePage() {
   const completionScore = Math.round(
     (completionFields.filter((f) => f.filled).length / completionFields.length) * 100
   );
-  const missingCount = completionFields.filter((field) => !field.filled).length;
+  const missingFields = completionFields.filter((field) => !field.filled);
+  const missingCount = missingFields.length;
   const displayName = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || dbUser?.displayName || 'Profilbild';
 
   if (loading) {
@@ -63,41 +66,94 @@ export default function CandidateProfilePage() {
   return (
     <div className="space-y-6">
       <div className="overflow-hidden rounded-[30px] border border-border/70 bg-gradient-to-br from-background via-background to-primary/[0.04] shadow-sm">
-        <div className="grid gap-6 p-6 md:grid-cols-[1.4fr_0.6fr] md:p-8">
-          <div className="space-y-4">
+        <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start md:p-8">
+          <div className="space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/[0.06] px-3 py-1 text-xs font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
               Profil & Karrierepräferenzen
             </div>
-            <div>
+            <div className="max-w-3xl">
               <h1 className="text-3xl font-bold tracking-tight">Profil</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Verwalte deine persönlichen Daten, Sales-Erfahrung und Präferenzen in einer klaren Übersicht.
-                Je vollständiger dein Profil ist, desto präziser werden Matches und Recruiter-Shortlists.
+                Verwalte deine wichtigsten Angaben, Karriereziele und Sales-Präferenzen in einer klaren Übersicht.
+                Fehlende Kernangaben kannst du direkt ergänzen, damit Matches und Recruiter-Shortlists präziser werden.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <div className="rounded-2xl border border-border/70 bg-background/90 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-3xl border border-border/70 bg-background/90 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Profilstatus</p>
                 <div className="mt-1 flex items-center gap-2 text-sm font-semibold">
                   {missingCount === 0 ? <BadgeCheck className="h-4 w-4 text-emerald-600" /> : <CircleAlert className="h-4 w-4 text-amber-500" />}
-                  <span>{missingCount === 0 ? 'Profil vollständig' : `${missingCount} Angaben fehlen noch`}</span>
+                  <span>{missingCount === 0 ? 'Profil vollständig' : `${missingCount} Kernangaben fehlen`}</span>
                 </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {missingCount === 0
+                    ? 'Dein Profil ist vollständig und bereit für Bewerbungen und bessere Matches.'
+                    : `Aktuell sind ${completionScore}% deiner Kernangaben hinterlegt.`}
+                </p>
               </div>
-              <div className="rounded-2xl border border-border/70 bg-background/90 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Matching</p>
+              <div className="rounded-3xl border border-border/70 bg-background/90 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Nächster Schritt</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
-                  {completionScore >= 80 ? 'Sehr gute Grundlage' : completionScore >= 60 ? 'Gut aufgestellt' : 'Noch ausbaufähig'}
+                  {missingCount === 0 ? 'Profil aktuell halten' : 'Fehlende Angaben ergänzen'}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  {missingCount === 0
+                    ? 'Du kannst jederzeit Details aktualisieren oder ein Profilbild ergänzen.'
+                    : missingFields.slice(0, 3).map((field) => field.label).join(' · ')}
                 </p>
               </div>
             </div>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/dashboard/onboarding?mode=edit">
+                <Button className="rounded-2xl">
+                  {missingCount === 0 ? 'Profil bearbeiten' : 'Profil vervollständigen'}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="/dashboard/candidate/jobs">
+                <Button variant="outline" className="rounded-2xl">
+                  Passende Jobs ansehen
+                </Button>
+              </Link>
+            </div>
+            {missingCount > 0 ? (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
+                <div className="flex items-start gap-3">
+                  <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-amber-900">Lass uns dein Profil vervollständigen</p>
+                    <p className="mt-1 text-xs leading-5 text-amber-900/80">
+                      Ergänze zuerst die wichtigsten Angaben, damit dein Profil in Matches und Bewerbungen vollständig wirkt.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {missingFields.slice(0, 4).map((field) => (
+                        <span
+                          key={field.label}
+                          className="inline-flex items-center rounded-full border border-amber-200 bg-background/80 px-2.5 py-1 text-[11px] font-medium text-amber-900"
+                        >
+                          {field.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
-          <div className="rounded-[24px] border border-border/70 bg-background/90 p-5">
-            <div className="mb-5 rounded-2xl border border-border/70 bg-muted/20 p-4">
-              <p className="text-sm font-semibold">Profilbild</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Optional, aber hilfreich für eine persönlichere Profilansicht.
-              </p>
+          <div className="rounded-[28px] border border-border/70 bg-background/95 p-5 shadow-sm">
+            <div className="rounded-3xl border border-border/70 bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Profilbild</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Optional, aber hilfreich für eine persönlichere Profilansicht.
+                  </p>
+                </div>
+                <div className="inline-flex h-10 min-w-10 items-center justify-center rounded-2xl bg-primary/10 px-3 text-sm font-semibold text-primary">
+                  {completionScore}%
+                </div>
+              </div>
               <div className="mt-4">
                 <ProfileAvatarUploader
                   imageUrl={dbUser?.avatarUrl}
@@ -109,39 +165,27 @@ export default function CandidateProfilePage() {
                 />
               </div>
             </div>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Profil-Fortschritt</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {missingCount === 0
-                    ? 'Alles ausgefüllt. Dein Profil ist bereit für bessere Matches.'
-                    : `Noch ${missingCount} ${missingCount === 1 ? 'Angabe' : 'Angaben'} bis zum vollständigen Profil.`}
-                </p>
-              </div>
-              <div className="relative h-14 w-14 shrink-0">
-                <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
-                  <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-muted/50" />
-                  <circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={`${completionScore} ${100 - completionScore}`} className="text-primary" />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold">{completionScore}%</div>
-              </div>
-            </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completionScore}%` }} />
-            </div>
-            <div className="mt-4 space-y-2">
-              {completionFields.filter((field) => !field.filled).slice(0, 3).map((field) => (
-                <div key={field.label} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <CircleAlert className="h-3.5 w-3.5 text-amber-500" />
-                  <span>{field.label} ergänzen</span>
+            <div className="mt-4 rounded-3xl border border-border/70 bg-background p-4">
+              <div className="flex items-start gap-3">
+                <PencilLine className="mt-0.5 h-4 w-4 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">Schnellzugriff</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Nutze die Bereiche unten, um gezielt persönliche Daten, Dokumente oder Präferenzen zu aktualisieren.
+                  </p>
                 </div>
-              ))}
-              {missingCount === 0 && (
-                <div className="flex items-center gap-2 text-xs text-emerald-700">
-                  <BadgeCheck className="h-3.5 w-3.5" />
-                  <span>Alle Kernangaben sind vorhanden.</span>
-                </div>
-              )}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  Persönliche Daten
+                </span>
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  Karriereziele
+                </span>
+                <span className="inline-flex items-center rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  Dokumente
+                </span>
+              </div>
             </div>
           </div>
         </div>

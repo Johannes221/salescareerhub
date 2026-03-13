@@ -1,24 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isUser, requireAdmin } from '@/lib/api-auth';
 import { prisma } from '@/lib/db';
-import { verifyIdToken } from '@/lib/auth/server';
 import { computeCandidateJobMatch } from '@/lib/candidate-journey';
-
-async function requireAdmin(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    const decoded = await verifyIdToken(authHeader.split('Bearer ')[1]);
-    const user = await prisma.user.findUnique({ where: { firebaseUid: decoded.uid } });
-    return user?.role === 'admin' ? user : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const application = await prisma.application.findUnique({
       where: { id: params.id },
@@ -80,7 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return NextResponse.json({ success: false, error: 'Nicht autorisiert' }, { status: 403 });
+    if (!isUser(admin)) return admin;
 
     const body = await req.json();
     const { status, internalNotes, fitScore, adminNotes, recommendedByAdmin } = body;
